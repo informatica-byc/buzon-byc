@@ -563,7 +563,7 @@ async function buscar(){
       ${(d.estado==='Resuelto')?`
         <div class="confirm-box">
           <div class="confirm-title">¿Estás conforme con la respuesta?</div>
-          <p class="qmeta" style="margin:4px 0 10px">Si estás de acuerdo, el caso se cierra. Si no, podés reabrirlo explicando por qué.</p>
+          <p class="qmeta" style="margin:4px 0 10px">Si estás de acuerdo, el caso se cierra. Si no, podés reabrirlo explicando por qué.${plazoTxt(d)}</p>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="cf-ok" onclick="confirmarColab('${d.codigo}')">✅ De acuerdo, cerrar</button>
             <button class="cf-no" onclick="mostrarReabrir('${d.codigo}')">↩️ No estoy de acuerdo</button>
@@ -581,6 +581,17 @@ async function buscar(){
 /* ---------- Confirmación / reapertura por el colaborador ---------- */
 function mostrarReabrir(){ const b=document.getElementById('reabrirBox'); if(b) b.style.display='block'; }
 
+// Texto del plazo restante (3 días) para confirmar antes del cierre automático
+function plazoTxt(d){
+  if(!d.resueltoEn) return '';
+  const t = d.resueltoEn.toDate ? d.resueltoEn.toDate().getTime() : new Date(d.resueltoEn).getTime();
+  const limite = t + 3*24*60*60*1000;
+  const restanMs = limite - Date.now();
+  if(restanMs <= 0) return ' <b>El plazo de 3 días venció; el caso se cerrará automáticamente.</b>';
+  const dias = Math.ceil(restanMs / (24*60*60*1000));
+  return ` Tenés <b>${dias} día${dias===1?'':'s'}</b> para responder; pasado ese plazo se cierra automáticamente y se toma como resuelto.`;
+}
+
 async function confirmarColab(cod){
   const msg=document.getElementById('confirmMsg'); msg.className='alert';
   try{
@@ -589,7 +600,7 @@ async function confirmarColab(cod){
       porEmail:'colaborador', en:firebase.firestore.FieldValue.serverTimestamp()
     });
     await db.collection('mensajes').doc(cod).update({
-      estado:'Cerrado', esperandoConfirmacion:false,
+      estado:'Cerrado', esperandoConfirmacion:false, resueltoEn:null,
       actualizado:firebase.firestore.FieldValue.serverTimestamp()});
     buscar(); // refrescar la vista
   }catch(e){ msg.className='alert err show'; msg.textContent='No se pudo registrar: '+e.message; }
@@ -605,7 +616,7 @@ async function reabrirColab(cod){
       porEmail:'colaborador', en:firebase.firestore.FieldValue.serverTimestamp()
     });
     await db.collection('mensajes').doc(cod).update({
-      estado:'En proceso', esperandoConfirmacion:false,
+      estado:'En proceso', esperandoConfirmacion:false, resueltoEn:null,
       actualizado:firebase.firestore.FieldValue.serverTimestamp()});
     buscar();
   }catch(e){ msg.className='alert err show'; msg.textContent='No se pudo reabrir: '+e.message; }
@@ -695,7 +706,42 @@ function escuchar(){
   if(unsub) unsub();
   unsub=db.collection('mensajes').orderBy('creado','desc').onSnapshot(snap=>{
     TODOS=snap.docs.map(d=>d.data()); pintar();
+    autoCerrarVencidos();   // cierra al vuelo los Resueltos sin confirmar tras 3 días
   },err=>{ document.getElementById('lista').innerHTML='<div class="muted">Error: '+err.message+'</div>'; });
+}
+
+/* Cierre automático: casos en Resuelto que llevan más de 3 días sin que el
+   colaborador confirme pasan a Cerrado (se toma como resuelto). Se ejecuta al
+   abrir/refrescar el panel. */
+const DIAS_LIMITE = 3;
+let autoCerrando = false;
+async function autoCerrarVencidos(){
+  if(autoCerrando) return;
+  const ahora = Date.now();
+  const limiteMs = DIAS_LIMITE * 24 * 60 * 60 * 1000;
+  const vencidos = TODOS.filter(m=>{
+    if(m.estado!=='Resuelto' || m.archivado) return false;
+    if(!m.resueltoEn) return false;               // sin fecha base, no se cierra
+    const t = m.resueltoEn.toDate ? m.resueltoEn.toDate().getTime() : new Date(m.resueltoEn).getTime();
+    return (ahora - t) > limiteMs;                // pasaron más de 3 días → al 4º día
+  });
+  if(!vencidos.length) return;
+  autoCerrando = true;
+  try{
+    for(const m of vencidos){
+      await db.collection('mensajes').doc(m.codigo).collection('historial').add({
+        estado:'Cerrado',
+        nota:'🔒 Cerrado automáticamente por falta de confirmación tras '+DIAS_LIMITE+' días. Se toma como resuelto.',
+        porEmail:'sistema', en:firebase.firestore.FieldValue.serverTimestamp()
+      });
+      await db.collection('mensajes').doc(m.codigo).update({
+        estado:'Cerrado', esperandoConfirmacion:false, resueltoEn:null,
+        cerradoAuto:true, actualizado:firebase.firestore.FieldValue.serverTimestamp()
+      });
+      delete HIST[m.codigo];
+    }
+  }catch(e){ console.error('autoCierre:', e.message); }
+  finally{ autoCerrando = false; }
 }
 
 const HIST={}; // cache de historial por código
@@ -747,7 +793,7 @@ function pintar(){
         <span class="qcode">${m.codigo}</span>
         <div style="display:flex;gap:6px;align-items:center">
           ${m.archivado?'<span class="badge b-cerrado">Archivado</span>':''}
-          <span class="badge ${ESTADO_CLASE[m.estado]||'b-nuevo'}">${m.estado}</span>
+          <span class="badge ${ESTADO_CLASE[m.estado]||'b-nuevo'}">${m.estado}${(m.estado==='Cerrado'&&m.cerradoAuto)?' (auto)':''}</span>
         </div>
       </div>
       <div class="qtipo">${m.tipo}${m.area?' · '+escHtml(m.area):''}</div>
@@ -871,9 +917,14 @@ async function guardarResp(){
     // 2) actualizar estado/última respuesta del documento principal
     const data={estado, actualizado:firebase.firestore.FieldValue.serverTimestamp()};
     if(nota) data.respuesta=nota;
-    // limpiar marca de reapertura previa si el moderador retoma el caso
-    if(estado!=='Resuelto') data.esperandoConfirmacion=false;
-    if(estado==='Resuelto') data.esperandoConfirmacion=true;
+    // marca de confirmación y fecha de resolución (para el cierre automático)
+    if(estado==='Resuelto'){
+      data.esperandoConfirmacion=true;
+      data.resueltoEn=firebase.firestore.FieldValue.serverTimestamp();
+    }else{
+      data.esperandoConfirmacion=false;
+      data.resueltoEn=null;
+    }
     await db.collection('mensajes').doc(RESP_COD).update(data);
     delete HIST[RESP_COD]; await cargarHistorial(RESP_COD);
     cerrarModal('modalResp');
