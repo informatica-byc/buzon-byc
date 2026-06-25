@@ -90,6 +90,39 @@
   .toprow .salir{font-size:.8rem;color:var(--err);background:none;border:none;cursor:pointer;font-weight:600}
   .config-warn{background:var(--warnbg);color:var(--warn);border:1px solid #ecd6a8;padding:10px 14px;
     border-radius:10px;font-size:.82rem;margin:16px 0;display:none}
+  /* modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(11,38,58,.55);display:none;align-items:center;
+    justify-content:center;z-index:100;padding:18px}
+  .modal-bg.show{display:flex}
+  .modal{background:#fff;border-radius:16px;max-width:460px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);
+    overflow:hidden;animation:pop .18s ease}
+  @keyframes pop{from{transform:scale(.95);opacity:0}to{transform:scale(1);opacity:1}}
+  .modal-head{background:var(--azul);color:#fff;padding:16px 20px;font-weight:700;font-size:1rem}
+  .modal-head small{display:block;font-weight:400;opacity:.85;font-size:.78rem;margin-top:2px}
+  .modal-body{padding:20px}
+  .modal-body label{margin-top:0}
+  .modal-foot{padding:14px 20px;display:flex;gap:10px;border-top:1px solid var(--linea)}
+  .modal-foot button{flex:1;padding:11px;border-radius:10px;font-weight:700;font-size:.92rem;cursor:pointer;border:none}
+  .modal-foot .ok{background:var(--azul);color:#fff}
+  .modal-foot .ok:hover{background:var(--azul2)}
+  .modal-foot .cancel{background:#fff;color:var(--gris);border:1px solid var(--linea)}
+  /* timeline */
+  .tl{margin-top:10px;border-top:1px solid var(--linea);padding-top:10px}
+  .tl-title{font-size:.72rem;font-weight:700;color:var(--gris);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+  .tl-item{position:relative;padding:0 0 12px 20px;border-left:2px solid var(--linea);margin-left:4px}
+  .tl-item:last-child{border-left-color:transparent;padding-bottom:0}
+  .tl-dot{position:absolute;left:-7px;top:2px;width:12px;height:12px;border-radius:50%;border:2px solid #fff;
+    box-shadow:0 0 0 1px var(--linea)}
+  .tl-d-nuevo{background:var(--azul2)} .tl-d-proceso{background:var(--warn)}
+  .tl-d-resuelto{background:var(--ok)} .tl-d-cerrado{background:var(--cerr)}
+  .tl-when{font-size:.72rem;color:var(--gris)}
+  .tl-estado{font-size:.82rem;font-weight:700}
+  .tl-resp{font-size:.85rem;margin-top:3px;white-space:pre-wrap}
+  .tl-by{font-size:.7rem;color:var(--gris);margin-top:2px}
+  .btn-admin{width:auto;margin:0;padding:8px 14px;font-size:.82rem;background:#fff;color:var(--azul);
+    border:1px solid var(--azul);border-radius:9px;font-weight:600;cursor:pointer}
+  .btn-admin:hover{background:var(--azul-soft)}
+  .user-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--linea);font-size:.86rem}
 </style>
 </head>
 <body>
@@ -208,7 +241,10 @@
       <div class="card">
         <div class="toprow">
           <div class="who" id="who"></div>
-          <button class="salir" onclick="salir()">Cerrar sesión</button>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn-admin" onclick="abrirUsuarios()">👥 Administrar usuarios</button>
+            <button class="salir" onclick="salir()">Cerrar sesión</button>
+          </div>
         </div>
         <div class="filtros">
           <select id="fEstado" onchange="pintar()">
@@ -234,6 +270,50 @@
   </section>
 
   <p class="muted">Departamento de Sistemas · B&amp;C Exportadores del Valle de Ujarrás</p>
+</div>
+
+<!-- MODAL RESPUESTA -->
+<div class="modal-bg" id="modalResp">
+  <div class="modal">
+    <div class="modal-head">Actualizar mensaje
+      <small id="mrCodigo">—</small></div>
+    <div class="modal-body">
+      <label>Estado</label>
+      <select id="mrEstado">
+        <option>Nuevo</option><option>En proceso</option><option>Resuelto</option><option>Cerrado</option>
+      </select>
+      <label>Respuesta o nota de seguimiento</label>
+      <textarea id="mrTexto" style="min-height:90px" placeholder="Lo que escribás se guarda en el historial y, si corresponde, se muestra al colaborador y en la pizarra."></textarea>
+      <div class="hint">Cada actualización queda registrada con fecha y usuario. No borra las anteriores.</div>
+      <div id="mrErr" class="alert err"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="cancel" onclick="cerrarModal('modalResp')">Cancelar</button>
+      <button class="ok" id="mrGuardar" onclick="guardarResp()">Guardar actualización</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL USUARIOS -->
+<div class="modal-bg" id="modalUsers">
+  <div class="modal">
+    <div class="modal-head">Administrar usuarios RRHH / Admin
+      <small>Crear cuentas con acceso al panel</small></div>
+    <div class="modal-body">
+      <label>Correo del nuevo usuario</label>
+      <input id="nuEmail" type="email" placeholder="nombre@bycexportadores.com">
+      <label>Contraseña temporal</label>
+      <input id="nuPass" type="text" placeholder="Mínimo 6 caracteres">
+      <div class="hint">El usuario podrá cambiarla luego. Se crea con acceso completo al panel.</div>
+      <button class="btn" style="margin-top:14px" id="nuCrear" onclick="crearUsuario()">Crear usuario</button>
+      <div id="nuMsg" class="alert"></div>
+      <div class="tl-title" style="margin-top:18px">Usuarios registrados</div>
+      <div id="nuLista"><div class="muted" style="padding:8px">Cargando…</div></div>
+    </div>
+    <div class="modal-foot">
+      <button class="cancel" onclick="cerrarModal('modalUsers')">Cerrar</button>
+    </div>
+  </div>
 </div>
 
 <!-- Firebase -->
@@ -330,6 +410,11 @@ async function enviar(){
       creado:firebase.firestore.FieldValue.serverTimestamp(),
       actualizado:firebase.firestore.FieldValue.serverTimestamp()
     });
+    // primer evento del historial
+    await db.collection('mensajes').doc(codigo).collection('historial').add({
+      estado:'Nuevo', nota:'Mensaje recibido', porEmail:null,
+      en:firebase.firestore.FieldValue.serverTimestamp()
+    });
 
     document.getElementById('codeVal').textContent=codigo;
     document.getElementById('codeResult').style.display='block';
@@ -362,14 +447,25 @@ async function buscar(){
     const doc=await db.collection('mensajes').doc(cod).get();
     if(!doc.exists){ cont.innerHTML='<div class="seg-estado">No encontramos ese código. Revisá que esté bien escrito.</div>'; return; }
     const d=doc.data();
+    const hsnap=await db.collection('mensajes').doc(cod).collection('historial').orderBy('en','asc').get();
+    const eventos=hsnap.docs.map(x=>x.data()).filter(e=>e.nota && e.nota!=='Mensaje recibido');
+    let tl='';
+    if(eventos.length){
+      tl='<div class="tl"><div class="tl-title">Seguimiento</div>'+
+        eventos.map(e=>`<div class="tl-item">
+          <span class="tl-dot tl-d-${(e.estado||'Nuevo').toLowerCase().replace(' ','').replace('enproceso','proceso')}"></span>
+          <div class="tl-when">${fechaTxt(e.en)}</div>
+          <div class="tl-estado">${e.estado||''}</div>
+          ${e.nota?`<div class="tl-resp">${escHtml(e.nota)}</div>`:''}
+        </div>`).join('')+'</div>';
+    }
     cont.innerHTML=`<div class="seg-estado" style="text-align:left">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
         <strong>${d.codigo}</strong>
         <span class="badge ${ESTADO_CLASE[d.estado]||'b-nuevo'}">${d.estado}</span>
       </div>
       <div class="qmeta">${d.tipo} · Enviado el ${fechaTxt(d.creado)}</div>
-      ${d.respuesta?`<div class="resp"><div class="rl">Respuesta de RRHH</div>${escHtml(d.respuesta)}</div>`
-        :'<div class="qmeta">Aún sin respuesta. Volvé a consultar más adelante.</div>'}
+      ${eventos.length?tl:'<div class="qmeta">Aún sin respuesta. Volvé a consultar más adelante.</div>'}
     </div>`;
   }catch(e){ cont.innerHTML='<div class="seg-estado">Error al consultar: '+e.message+'</div>'; }
 }
@@ -406,6 +502,27 @@ function escuchar(){
   },err=>{ document.getElementById('lista').innerHTML='<div class="muted">Error: '+err.message+'</div>'; });
 }
 
+const HIST={}; // cache de historial por código
+function tlClase(est){ return (est||'Nuevo').toLowerCase().replace('en proceso','proceso'); }
+
+async function cargarHistorial(cod){
+  const snap=await db.collection('mensajes').doc(cod).collection('historial').orderBy('en','asc').get();
+  HIST[cod]=snap.docs.map(x=>x.data());
+  const cont=document.getElementById('tl_'+cod);
+  if(cont) cont.innerHTML=renderTL(HIST[cod]);
+}
+
+function renderTL(eventos){
+  if(!eventos||!eventos.length) return '<div class="qmeta">Sin movimientos.</div>';
+  return eventos.map(e=>`<div class="tl-item">
+    <span class="tl-dot tl-d-${tlClase(e.estado)}"></span>
+    <div class="tl-when">${fechaTxt(e.en)}</div>
+    <div class="tl-estado">${e.estado||''}</div>
+    ${e.nota?`<div class="tl-resp">${escHtml(e.nota)}</div>`:''}
+    ${e.porEmail?`<div class="tl-by">por ${escHtml(e.porEmail)}</div>`:''}
+  </div>`).join('');
+}
+
 function pintar(){
   const fe=document.getElementById('fEstado').value;
   const ft=document.getElementById('fTipo').value;
@@ -426,30 +543,115 @@ function pintar(){
         ${m.nombre?' · 👤 '+escHtml(m.nombre):' · 🕵️ Anónimo'}
         ${m.contacto?' · ✉️ '+escHtml(m.contacto):''}</div>
       <div class="qtxt">${escHtml(m.mensaje)}</div>
-      ${m.respuesta?`<div class="resp"><div class="rl">Respuesta publicada</div>${escHtml(m.respuesta)}</div>`:''}
+      <div class="tl">
+        <div class="tl-title">Historial de seguimiento</div>
+        <div id="tl_${m.codigo}">${HIST[m.codigo]?renderTL(HIST[m.codigo]):'<div class="qmeta">Cargando…</div>'}</div>
+      </div>
       <div class="acciones">
-        <select id="est_${m.codigo}">
-          ${['Nuevo','En proceso','Resuelto','Cerrado'].map(s=>`<option ${s===m.estado?'selected':''}>${s}</option>`).join('')}
-        </select>
-        <button onclick="responder('${m.codigo}')">Responder / Actualizar</button>
+        <button onclick="abrirResp('${m.codigo}','${m.estado}')">＋ Actualizar / Responder</button>
       </div>
     </div>`).join('');
+  // cargar historial faltante
+  arr.forEach(m=>{ if(!HIST[m.codigo]) cargarHistorial(m.codigo); });
 }
 
-async function responder(cod){
-  const nuevo=document.getElementById('est_'+cod).value;
-  const actual=TODOS.find(m=>m.codigo===cod);
-  const resp=prompt('Respuesta para '+cod+' (se muestra al colaborador y en la pizarra). Dejá vacío para no cambiarla:',
-    actual&&actual.respuesta?actual.respuesta:'');
-  if(resp===null && nuevo===actual.estado) return;
-  const data={estado:nuevo,actualizado:firebase.firestore.FieldValue.serverTimestamp()};
-  if(resp!==null) data.respuesta=resp.trim()||null;
-  try{ await db.collection('mensajes').doc(cod).update(data); }
-  catch(e){ alert('Error: '+e.message); }
+/* ---------- Modal respuesta ---------- */
+let RESP_COD=null;
+function abrirResp(cod, estadoActual){
+  RESP_COD=cod;
+  document.getElementById('mrCodigo').textContent=cod;
+  document.getElementById('mrEstado').value=estadoActual||'Nuevo';
+  document.getElementById('mrTexto').value='';
+  document.getElementById('mrErr').classList.remove('show');
+  document.getElementById('modalResp').classList.add('show');
+}
+function cerrarModal(id){ document.getElementById(id).classList.remove('show'); }
+
+async function guardarResp(){
+  const err=document.getElementById('mrErr'); err.classList.remove('show');
+  const estado=document.getElementById('mrEstado').value;
+  const nota=document.getElementById('mrTexto').value.trim();
+  const actual=TODOS.find(m=>m.codigo===RESP_COD);
+  if(!nota && estado===actual.estado){
+    err.textContent='Cambiá el estado o escribí una nota para guardar.'; err.classList.add('show'); return;
+  }
+  const btn=document.getElementById('mrGuardar'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Guardando…';
+  try{
+    const email=auth.currentUser?auth.currentUser.email:null;
+    // 1) nuevo evento en historial (no borra los anteriores)
+    await db.collection('mensajes').doc(RESP_COD).collection('historial').add({
+      estado, nota:nota||('Cambio de estado a '+estado), porEmail:email,
+      en:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    // 2) actualizar estado/última respuesta del documento principal
+    const data={estado, actualizado:firebase.firestore.FieldValue.serverTimestamp()};
+    if(nota) data.respuesta=nota;
+    await db.collection('mensajes').doc(RESP_COD).update(data);
+    delete HIST[RESP_COD]; await cargarHistorial(RESP_COD);
+    cerrarModal('modalResp');
+  }catch(e){ err.textContent='Error: '+e.message; err.classList.add('show'); }
+  finally{ btn.disabled=false; btn.textContent='Guardar actualización'; }
 }
 
 /* ---------- util ---------- */
 function escHtml(s){ return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- Gestión de usuarios ---------- */
+function abrirUsuarios(){
+  document.getElementById('nuEmail').value='';
+  document.getElementById('nuPass').value='';
+  document.getElementById('nuMsg').classList.remove('show');
+  document.getElementById('modalUsers').classList.add('show');
+  listarUsuarios();
+}
+
+async function listarUsuarios(){
+  const cont=document.getElementById('nuLista');
+  try{
+    const snap=await db.collection('adminUsers').orderBy('creado','desc').get();
+    if(snap.empty){ cont.innerHTML='<div class="muted" style="padding:8px">Aún no hay usuarios registrados aquí.</div>'; return; }
+    cont.innerHTML=snap.docs.map(d=>{const u=d.data();
+      return `<div class="user-row"><span>${escHtml(u.email)}</span>
+        <span class="qmeta" style="margin:0">${fechaTxt(u.creado)}</span></div>`;}).join('');
+  }catch(e){ cont.innerHTML='<div class="muted" style="padding:8px">No se pudo cargar la lista.</div>'; }
+}
+
+async function crearUsuario(){
+  const msg=document.getElementById('nuMsg'); msg.className='alert';
+  const email=document.getElementById('nuEmail').value.trim();
+  const pass=document.getElementById('nuPass').value;
+  if(!email||pass.length<6){ msg.textContent='Ingresá un correo válido y una contraseña de mínimo 6 caracteres.';
+    msg.classList.add('err','show'); return; }
+  const btn=document.getElementById('nuCrear'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Creando…';
+  // app secundaria: crea el usuario SIN cerrar la sesión del admin actual
+  let secApp;
+  try{
+    secApp=firebase.initializeApp(firebaseConfig,'secondary-'+Date.now());
+    const cred=await secApp.auth().createUserWithEmailAndPassword(email,pass);
+    await db.collection('adminUsers').doc(cred.user.uid).set({
+      email, creado:firebase.firestore.FieldValue.serverTimestamp(),
+      creadoPor: auth.currentUser?auth.currentUser.email:null
+    });
+    await secApp.auth().signOut();
+    msg.textContent='✅ Usuario creado: '+email; msg.classList.add('ok','show');
+    document.getElementById('nuEmail').value=''; document.getElementById('nuPass').value='';
+    listarUsuarios();
+  }catch(e){
+    let t='No se pudo crear: '+e.message;
+    if(e.code==='auth/email-already-in-use') t='Ese correo ya tiene una cuenta.';
+    if(e.code==='auth/invalid-email') t='El correo no es válido.';
+    if(e.code==='auth/weak-password') t='La contraseña es muy débil (mínimo 6 caracteres).';
+    msg.textContent=t; msg.classList.add('err','show');
+  }finally{
+    btn.disabled=false; btn.textContent='Crear usuario';
+    if(secApp){ try{ await secApp.delete(); }catch(_){} }
+  }
+}
+
+/* cerrar modal al hacer clic en el fondo oscuro (no en el contenido) */
+document.querySelectorAll('.modal-bg').forEach(bg=>{
+  bg.addEventListener('click',ev=>{ if(ev.target===bg) bg.classList.remove('show'); });
+});
 
 /* deep-link ?seguir=CODIGO */
 const qs=new URLSearchParams(location.search);
