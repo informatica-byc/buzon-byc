@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buzón de Quejas y Sugerencias · B&C Exportadores</title>
+<style>
+  :root{
+    --azul:#0B3D66; --azul2:#1A6AA8; --azul-soft:#E8F1F8;
+    --tinta:#13263a; --gris:#5a6b7a; --linea:#d6e1ec;
+    --ok:#1f9d6b; --okbg:#e6f6ef; --warn:#c47a18; --warnbg:#fbf1df;
+    --err:#c0392b; --errbg:#fbeae8; --cerr:#7a8694; --cerrbg:#eef2f6;
+    --blanco:#ffffff; --fondo:#f4f7fa;
+    --r:14px; --sombra:0 6px 24px rgba(11,61,102,.08);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    background:var(--fondo);color:var(--tinta);line-height:1.5}
+  header.top{background:linear-gradient(135deg,var(--azul),var(--azul2));color:#fff;
+    padding:18px 20px;display:flex;align-items:center;gap:14px;box-shadow:var(--sombra)}
+  header.top .logo{width:42px;height:42px;border-radius:10px;background:#fff;display:flex;
+    align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
+  header.top h1{font-size:1.05rem;margin:0;font-weight:700;letter-spacing:.2px}
+  header.top small{display:block;font-weight:400;opacity:.85;font-size:.78rem}
+  .wrap{max-width:760px;margin:0 auto;padding:20px}
+  .tabs{display:flex;gap:6px;margin:18px 0;flex-wrap:wrap}
+  .tabs button{flex:1;min-width:130px;border:1px solid var(--linea);background:#fff;color:var(--gris);
+    padding:11px 8px;border-radius:10px;font-size:.86rem;font-weight:600;cursor:pointer;transition:.15s}
+  .tabs button.active{background:var(--azul);color:#fff;border-color:var(--azul)}
+  .card{background:#fff;border:1px solid var(--linea);border-radius:var(--r);padding:22px;
+    box-shadow:var(--sombra);margin-bottom:16px}
+  h2.sec{font-size:1.1rem;margin:0 0 4px}
+  p.sub{margin:0 0 18px;color:var(--gris);font-size:.9rem}
+  label{display:block;font-size:.82rem;font-weight:600;margin:14px 0 5px;color:var(--tinta)}
+  .req{color:var(--err)}
+  input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--linea);border-radius:10px;
+    font-size:.95rem;font-family:inherit;background:#fff;color:var(--tinta)}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--azul2);
+    box-shadow:0 0 0 3px var(--azul-soft)}
+  textarea{resize:vertical;min-height:120px}
+  .hint{font-size:.76rem;color:var(--gris);margin-top:4px}
+  .btn{width:100%;border:none;background:var(--azul);color:#fff;padding:13px;border-radius:11px;
+    font-size:.98rem;font-weight:700;cursor:pointer;margin-top:18px;transition:.15s}
+  .btn:hover{background:var(--azul2)}
+  .btn:disabled{opacity:.55;cursor:not-allowed}
+  .btn.ghost{background:#fff;color:var(--azul);border:1px solid var(--azul)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:520px){.row2{grid-template-columns:1fr}}
+  .alert{padding:12px 14px;border-radius:10px;font-size:.88rem;margin-top:14px;display:none}
+  .alert.show{display:block}
+  .alert.ok{background:var(--okbg);color:var(--ok);border:1px solid #bfe6d4}
+  .alert.err{background:var(--errbg);color:var(--err);border:1px solid #f0c8c2}
+  .codebox{text-align:center;background:var(--azul-soft);border:2px dashed var(--azul2);
+    border-radius:12px;padding:22px;margin-top:16px}
+  .codebox .lbl{font-size:.8rem;color:var(--gris);text-transform:uppercase;letter-spacing:1px}
+  .codebox .code{font-size:2rem;font-weight:800;color:var(--azul);letter-spacing:2px;margin:6px 0}
+  .codebox button{margin-top:8px;border:none;background:var(--azul);color:#fff;padding:9px 18px;
+    border-radius:9px;font-weight:600;cursor:pointer}
+  .badge{display:inline-block;padding:4px 11px;border-radius:20px;font-size:.74rem;font-weight:700}
+  .b-nuevo{background:var(--azul-soft);color:var(--azul)}
+  .b-proceso{background:var(--warnbg);color:var(--warn)}
+  .b-resuelto{background:var(--okbg);color:var(--ok)}
+  .b-cerrado{background:var(--cerrbg);color:var(--cerr)}
+  .qr-area{text-align:center;padding:10px}
+  #qrcode{display:inline-block;padding:14px;background:#fff;border:1px solid var(--linea);border-radius:12px}
+  .qr-url{font-size:.78rem;color:var(--gris);word-break:break-all;margin-top:10px}
+  /* panel */
+  .filtros{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .filtros select,.filtros input{width:auto;flex:1;min-width:120px}
+  .qcard{border:1px solid var(--linea);border-radius:12px;padding:14px;margin-bottom:10px;background:#fff}
+  .qcard .qh{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .qcard .qcode{font-weight:800;color:var(--azul);font-size:.95rem}
+  .qcard .qmeta{font-size:.76rem;color:var(--gris);margin:6px 0}
+  .qcard .qtxt{font-size:.9rem;margin:8px 0;white-space:pre-wrap}
+  .qcard .qtipo{font-size:.74rem;font-weight:700;text-transform:uppercase;color:var(--azul2)}
+  .resp{background:var(--azul-soft);border-radius:9px;padding:10px;margin-top:8px;font-size:.85rem}
+  .resp .rl{font-size:.72rem;font-weight:700;color:var(--azul);text-transform:uppercase}
+  .acciones{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .acciones select{width:auto;flex:1;min-width:130px;padding:8px}
+  .acciones button{border:none;background:var(--azul);color:#fff;padding:8px 16px;border-radius:8px;
+    font-weight:600;cursor:pointer;font-size:.84rem}
+  .login-box{max-width:380px;margin:30px auto}
+  .seg-estado{text-align:center;padding:20px;margin-top:14px;border-radius:12px;border:1px solid var(--linea)}
+  .spin{display:inline-block;width:16px;height:16px;border:2px solid #fff;border-top-color:transparent;
+    border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .muted{color:var(--gris);font-size:.85rem;text-align:center;padding:16px}
+  .toprow{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .toprow .who{font-size:.82rem;color:var(--gris)}
+  .toprow .salir{font-size:.8rem;color:var(--err);background:none;border:none;cursor:pointer;font-weight:600}
+  .config-warn{background:var(--warnbg);color:var(--warn);border:1px solid #ecd6a8;padding:10px 14px;
+    border-radius:10px;font-size:.82rem;margin:16px 0;display:none}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="logo">🦜</div>
+  <h1>Buzón de Quejas y Sugerencias
+    <small>B&amp;C Exportadores del Valle de Ujarrás</small></h1>
+</header>
+
+<div class="wrap">
+  <div id="cfgWarn" class="config-warn"></div>
+
+  <div class="tabs">
+    <button data-v="enviar" class="active" onclick="vista('enviar')">📝 Enviar</button>
+    <button data-v="seguir" onclick="vista('seguir')">🔎 Dar seguimiento</button>
+    <button data-v="qr" onclick="vista('qr')">📱 Código QR</button>
+    <button data-v="admin" onclick="vista('admin')">🔐 RRHH</button>
+  </div>
+
+  <!-- ENVIAR -->
+  <section id="v-enviar" class="card">
+    <h2 class="sec">Contanos qué pasó</h2>
+    <p class="sub">Tu mensaje llega directo a Recursos Humanos. Podés enviarlo de forma anónima
+      o dejar tu nombre si querés respuesta directa. Al final recibís un código de seguimiento.</p>
+
+    <label>Tipo de mensaje <span class="req">*</span></label>
+    <select id="tipo">
+      <option value="Queja">Queja</option>
+      <option value="Sugerencia">Sugerencia</option>
+      <option value="Felicitación">Felicitación</option>
+      <option value="Consulta">Consulta</option>
+    </select>
+
+    <label>Área o departamento</label>
+    <select id="area">
+      <option value="">— Seleccioná (opcional) —</option>
+      <option>Producción / Planta</option>
+      <option>Empaque</option>
+      <option>Bodega</option>
+      <option>Mantenimiento</option>
+      <option>Calidad</option>
+      <option>Recursos Humanos</option>
+      <option>Administración / Finanzas</option>
+      <option>Sistemas / TI</option>
+      <option>Transporte</option>
+      <option>Otro</option>
+    </select>
+
+    <label>Tu mensaje <span class="req">*</span></label>
+    <textarea id="mensaje" placeholder="Describí lo que querés comunicar con el mayor detalle posible…"></textarea>
+    <div class="hint">Entre más detalle, mejor podemos darle seguimiento.</div>
+
+    <div class="row2">
+      <div>
+        <label>Tu nombre (opcional)</label>
+        <input id="nombre" placeholder="Dejalo en blanco si es anónimo">
+      </div>
+      <div>
+        <label>Contacto (opcional)</label>
+        <input id="contacto" placeholder="Correo o teléfono">
+      </div>
+    </div>
+    <div class="hint">Si dejás contacto, RRHH puede responderte directamente.</div>
+
+    <button class="btn" id="btnEnviar" onclick="enviar()">Enviar mensaje</button>
+    <div id="okEnviar" class="alert ok"></div>
+    <div id="errEnviar" class="alert err"></div>
+
+    <div id="codeResult" class="codebox" style="display:none">
+      <div class="lbl">Tu código de seguimiento</div>
+      <div class="code" id="codeVal">—</div>
+      <p class="sub" style="margin:0">Anotá este código. Con él podés consultar el estado de tu mensaje
+        (o ver la respuesta en la pizarra informativa).</p>
+      <button onclick="copiarCodigo()">📋 Copiar código</button>
+    </div>
+  </section>
+
+  <!-- SEGUIR -->
+  <section id="v-seguir" class="card" style="display:none">
+    <h2 class="sec">Dar seguimiento</h2>
+    <p class="sub">Ingresá el código que te dimos al enviar tu mensaje.</p>
+    <label>Código de seguimiento</label>
+    <input id="codigoBuscar" placeholder="Ej: QJ-2026-0001" style="text-transform:uppercase">
+    <button class="btn" onclick="buscar()">Consultar estado</button>
+    <div id="segResult"></div>
+  </section>
+
+  <!-- QR -->
+  <section id="v-qr" class="card" style="display:none">
+    <h2 class="sec">Código QR para colaboradores</h2>
+    <p class="sub">Imprimí este código y pegalo en la pizarra informativa o en las áreas.
+      Cualquier colaborador lo escanea con su celular y llega directo al formulario.</p>
+    <div class="qr-area">
+      <div id="qrcode"></div>
+      <div class="qr-url" id="qrUrl"></div>
+      <button class="btn ghost" style="max-width:240px;margin:16px auto 0" onclick="window.print()">🖨️ Imprimir QR</button>
+    </div>
+  </section>
+
+  <!-- ADMIN -->
+  <section id="v-admin" style="display:none">
+    <!-- login -->
+    <div id="loginCard" class="card login-box">
+      <h2 class="sec">Acceso RRHH / Administrador</h2>
+      <p class="sub">Ingresá con tu cuenta autorizada.</p>
+      <label>Correo</label>
+      <input id="email" type="email" placeholder="usuario@bycexportadores.com">
+      <label>Contraseña</label>
+      <input id="pass" type="password" placeholder="••••••••">
+      <button class="btn" id="btnLogin" onclick="login()">Ingresar</button>
+      <div id="errLogin" class="alert err"></div>
+    </div>
+
+    <!-- panel -->
+    <div id="panelCard" style="display:none">
+      <div class="card">
+        <div class="toprow">
+          <div class="who" id="who"></div>
+          <button class="salir" onclick="salir()">Cerrar sesión</button>
+        </div>
+        <div class="filtros">
+          <select id="fEstado" onchange="pintar()">
+            <option value="">Todos los estados</option>
+            <option value="Nuevo">Nuevo</option>
+            <option value="En proceso">En proceso</option>
+            <option value="Resuelto">Resuelto</option>
+            <option value="Cerrado">Cerrado</option>
+          </select>
+          <select id="fTipo" onchange="pintar()">
+            <option value="">Todos los tipos</option>
+            <option>Queja</option>
+            <option>Sugerencia</option>
+            <option>Felicitación</option>
+            <option>Consulta</option>
+          </select>
+          <input id="fBuscar" placeholder="Buscar código o texto…" oninput="pintar()">
+        </div>
+        <div class="qmeta" id="contador"></div>
+      </div>
+      <div id="lista"></div>
+    </div>
+  </section>
+
+  <p class="muted">Departamento de Sistemas · B&amp;C Exportadores del Valle de Ujarrás</p>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<!-- QR -->
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+<script>
+/* ============================================================
+   CONFIG FIREBASE  →  REEMPLAZAR con los datos de tu proyecto
+   Firebase Console › Configuración del proyecto › Tus apps (Web)
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "TU_API_KEY",
+  authDomain: "TU_PROYECTO.firebaseapp.com",
+  projectId: "TU_PROYECTO",
+  storageBucket: "TU_PROYECTO.appspot.com",
+  messagingSenderId: "TU_SENDER_ID",
+  appId: "TU_APP_ID"
+};
+
+let db=null, auth=null, configOk=false;
+try{
+  if(firebaseConfig.apiKey!=="TU_API_KEY"){
+    firebase.initializeApp(firebaseConfig);
+    db=firebase.firestore(); auth=firebase.auth(); configOk=true;
+  }
+}catch(e){ console.error(e); }
+
+if(!configOk){
+  const w=document.getElementById('cfgWarn');
+  w.style.display='block';
+  w.innerHTML='⚠️ <b>Falta configurar Firebase.</b> Reemplazá el objeto <code>firebaseConfig</code> '+
+    'en el código con los datos de tu proyecto para activar el guardado y el login.';
+}
+
+/* ---------- Navegación ---------- */
+function vista(v){
+  ['enviar','seguir','qr','admin'].forEach(x=>{
+    document.getElementById('v-'+x).style.display = x===v?'block':'none';
+    document.querySelector(`.tabs button[data-v="${x}"]`).classList.toggle('active',x===v);
+  });
+  if(v==='qr') pintarQR();
+}
+
+/* ---------- QR ---------- */
+let qrDone=false;
+function pintarQR(){
+  if(qrDone) return;
+  const url=location.origin+location.pathname;
+  document.getElementById('qrUrl').textContent=url;
+  new QRCode(document.getElementById('qrcode'),{text:url,width:200,height:200,
+    colorDark:"#0B3D66",colorLight:"#ffffff"});
+  qrDone=true;
+}
+
+/* ---------- Enviar queja ---------- */
+function pad(n){return String(n).padStart(4,'0');}
+
+async function enviar(){
+  const okE=document.getElementById('okEnviar'), errE=document.getElementById('errEnviar');
+  okE.classList.remove('show'); errE.classList.remove('show');
+  const tipo=document.getElementById('tipo').value;
+  const area=document.getElementById('area').value;
+  const mensaje=document.getElementById('mensaje').value.trim();
+  const nombre=document.getElementById('nombre').value.trim();
+  const contacto=document.getElementById('contacto').value.trim();
+
+  if(mensaje.length<10){ errE.textContent='Escribí tu mensaje (mínimo 10 caracteres).'; errE.classList.add('show'); return; }
+  if(!configOk){ errE.textContent='Firebase no está configurado todavía.'; errE.classList.add('show'); return; }
+
+  const btn=document.getElementById('btnEnviar');
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span> Enviando…';
+
+  try{
+    const year=new Date().getFullYear();
+    const pref = {Queja:'QJ',Sugerencia:'SG','Felicitación':'FL',Consulta:'CN'}[tipo]||'MS';
+    // consecutivo por transacción sobre contador del año
+    const counterRef=db.collection('contadores').doc(String(year));
+    let consec;
+    await db.runTransaction(async t=>{
+      const snap=await t.get(counterRef);
+      consec=(snap.exists?(snap.data().n||0):0)+1;
+      t.set(counterRef,{n:consec},{merge:true});
+    });
+    const codigo=`${pref}-${year}-${pad(consec)}`;
+
+    await db.collection('mensajes').doc(codigo).set({
+      codigo, tipo, area:area||null, mensaje,
+      nombre:nombre||null, contacto:contacto||null,
+      estado:'Nuevo', respuesta:null,
+      creado:firebase.firestore.FieldValue.serverTimestamp(),
+      actualizado:firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    document.getElementById('codeVal').textContent=codigo;
+    document.getElementById('codeResult').style.display='block';
+    okE.textContent='✅ Mensaje enviado. Guardá tu código de seguimiento.'; okE.classList.add('show');
+    ['mensaje','nombre','contacto'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('codeResult').scrollIntoView({behavior:'smooth'});
+  }catch(e){
+    console.error(e); errE.textContent='No se pudo enviar: '+e.message; errE.classList.add('show');
+  }finally{ btn.disabled=false; btn.textContent='Enviar mensaje'; }
+}
+
+function copiarCodigo(){
+  const c=document.getElementById('codeVal').textContent;
+  navigator.clipboard.writeText(c).then(()=>{ const b=event.target; const t=b.textContent;
+    b.textContent='✓ Copiado'; setTimeout(()=>b.textContent=t,1500); });
+}
+
+/* ---------- Seguimiento ---------- */
+const ESTADO_CLASE={'Nuevo':'b-nuevo','En proceso':'b-proceso','Resuelto':'b-resuelto','Cerrado':'b-cerrado'};
+function fechaTxt(ts){ if(!ts) return '—'; const d=ts.toDate?ts.toDate():new Date(ts);
+  return d.toLocaleDateString('es-CR',{day:'2-digit',month:'short',year:'numeric'}); }
+
+async function buscar(){
+  const cont=document.getElementById('segResult');
+  const cod=document.getElementById('codigoBuscar').value.trim().toUpperCase();
+  if(!cod){ cont.innerHTML=''; return; }
+  if(!configOk){ cont.innerHTML='<div class="seg-estado">Firebase no configurado.</div>'; return; }
+  cont.innerHTML='<div class="muted"><span class="spin" style="border-color:#0B3D66;border-top-color:transparent"></span> Buscando…</div>';
+  try{
+    const doc=await db.collection('mensajes').doc(cod).get();
+    if(!doc.exists){ cont.innerHTML='<div class="seg-estado">No encontramos ese código. Revisá que esté bien escrito.</div>'; return; }
+    const d=doc.data();
+    cont.innerHTML=`<div class="seg-estado" style="text-align:left">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <strong>${d.codigo}</strong>
+        <span class="badge ${ESTADO_CLASE[d.estado]||'b-nuevo'}">${d.estado}</span>
+      </div>
+      <div class="qmeta">${d.tipo} · Enviado el ${fechaTxt(d.creado)}</div>
+      ${d.respuesta?`<div class="resp"><div class="rl">Respuesta de RRHH</div>${escHtml(d.respuesta)}</div>`
+        :'<div class="qmeta">Aún sin respuesta. Volvé a consultar más adelante.</div>'}
+    </div>`;
+  }catch(e){ cont.innerHTML='<div class="seg-estado">Error al consultar: '+e.message+'</div>'; }
+}
+
+/* ---------- Login RRHH ---------- */
+function login(){
+  const errL=document.getElementById('errLogin'); errL.classList.remove('show');
+  if(!configOk){ errL.textContent='Firebase no configurado.'; errL.classList.add('show'); return; }
+  const em=document.getElementById('email').value.trim();
+  const pw=document.getElementById('pass').value;
+  const btn=document.getElementById('btnLogin'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Ingresando…';
+  auth.signInWithEmailAndPassword(em,pw).catch(e=>{
+    errL.textContent='No se pudo ingresar. Revisá correo y contraseña.'; errL.classList.add('show');
+  }).finally(()=>{ btn.disabled=false; btn.textContent='Ingresar'; });
+}
+function salir(){ auth.signOut(); }
+
+let TODOS=[], unsub=null;
+if(configOk){
+  auth.onAuthStateChanged(u=>{
+    document.getElementById('loginCard').style.display = u?'none':'block';
+    document.getElementById('panelCard').style.display = u?'block':'none';
+    if(u){
+      document.getElementById('who').textContent='Sesión: '+u.email;
+      escuchar();
+    }else if(unsub){ unsub(); unsub=null; }
+  });
+}
+
+function escuchar(){
+  if(unsub) unsub();
+  unsub=db.collection('mensajes').orderBy('creado','desc').onSnapshot(snap=>{
+    TODOS=snap.docs.map(d=>d.data()); pintar();
+  },err=>{ document.getElementById('lista').innerHTML='<div class="muted">Error: '+err.message+'</div>'; });
+}
+
+function pintar(){
+  const fe=document.getElementById('fEstado').value;
+  const ft=document.getElementById('fTipo').value;
+  const fb=document.getElementById('fBuscar').value.trim().toLowerCase();
+  let arr=TODOS.filter(m=>(!fe||m.estado===fe)&&(!ft||m.tipo===ft)&&
+    (!fb||(m.codigo||'').toLowerCase().includes(fb)||(m.mensaje||'').toLowerCase().includes(fb)));
+  document.getElementById('contador').textContent=`${arr.length} mensaje(s)`;
+  const L=document.getElementById('lista');
+  if(!arr.length){ L.innerHTML='<div class="card muted">No hay mensajes con esos filtros.</div>'; return; }
+  L.innerHTML=arr.map(m=>`
+    <div class="qcard">
+      <div class="qh">
+        <span class="qcode">${m.codigo}</span>
+        <span class="badge ${ESTADO_CLASE[m.estado]||'b-nuevo'}">${m.estado}</span>
+      </div>
+      <div class="qtipo">${m.tipo}${m.area?' · '+escHtml(m.area):''}</div>
+      <div class="qmeta">${fechaTxt(m.creado)}
+        ${m.nombre?' · 👤 '+escHtml(m.nombre):' · 🕵️ Anónimo'}
+        ${m.contacto?' · ✉️ '+escHtml(m.contacto):''}</div>
+      <div class="qtxt">${escHtml(m.mensaje)}</div>
+      ${m.respuesta?`<div class="resp"><div class="rl">Respuesta publicada</div>${escHtml(m.respuesta)}</div>`:''}
+      <div class="acciones">
+        <select id="est_${m.codigo}">
+          ${['Nuevo','En proceso','Resuelto','Cerrado'].map(s=>`<option ${s===m.estado?'selected':''}>${s}</option>`).join('')}
+        </select>
+        <button onclick="responder('${m.codigo}')">Responder / Actualizar</button>
+      </div>
+    </div>`).join('');
+}
+
+async function responder(cod){
+  const nuevo=document.getElementById('est_'+cod).value;
+  const actual=TODOS.find(m=>m.codigo===cod);
+  const resp=prompt('Respuesta para '+cod+' (se muestra al colaborador y en la pizarra). Dejá vacío para no cambiarla:',
+    actual&&actual.respuesta?actual.respuesta:'');
+  if(resp===null && nuevo===actual.estado) return;
+  const data={estado:nuevo,actualizado:firebase.firestore.FieldValue.serverTimestamp()};
+  if(resp!==null) data.respuesta=resp.trim()||null;
+  try{ await db.collection('mensajes').doc(cod).update(data); }
+  catch(e){ alert('Error: '+e.message); }
+}
+
+/* ---------- util ---------- */
+function escHtml(s){ return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* deep-link ?seguir=CODIGO */
+const qs=new URLSearchParams(location.search);
+if(qs.get('seguir')){ vista('seguir'); document.getElementById('codigoBuscar').value=qs.get('seguir'); buscar(); }
+</script>
+</body>
+</html>
