@@ -141,6 +141,12 @@
   .overlay .big-spin{width:38px;height:38px;border:4px solid var(--azul-soft);border-top-color:var(--azul);
     border-radius:50%;animation:sp .8s linear infinite;margin:0 auto 12px}
   .overlay .box span{font-size:.9rem;color:var(--gris);font-weight:600}
+  /* confirmación del colaborador */
+  .confirm-box{margin-top:14px;padding:14px;border:1px solid var(--linea);border-radius:12px;background:var(--azul-soft)}
+  .confirm-title{font-weight:700;font-size:.95rem;color:var(--azul)}
+  .cf-ok,.cf-no{border:none;border-radius:9px;padding:10px 14px;font-weight:700;font-size:.86rem;cursor:pointer}
+  .cf-ok{background:var(--ok);color:#fff}
+  .cf-no{background:#fff;color:var(--err);border:1px solid #f0c8c2}
 </style>
 </head>
 <body>
@@ -351,9 +357,7 @@
       <small id="mrCodigo">—</small></div>
     <div class="modal-body">
       <label>Estado</label>
-      <select id="mrEstado">
-        <option>Nuevo</option><option>En proceso</option><option>Resuelto</option><option>Cerrado</option>
-      </select>
+      <select id="mrEstado"></select>
       <label>Respuesta o nota de seguimiento</label>
       <textarea id="mrTexto" style="min-height:90px" placeholder="Lo que escribás se guarda en el historial y, si corresponde, se muestra al colaborador y en la pizarra."></textarea>
       <div class="hint">Cada actualización queda registrada con fecha y usuario. No borra las anteriores.</div>
@@ -556,8 +560,55 @@ async function buscar(){
       </div>
       <div class="qmeta">${d.tipo} · Enviado el ${fechaTxt(d.creado)}</div>
       ${eventos.length?tl:'<div class="qmeta">Aún sin respuesta. Volvé a consultar más adelante.</div>'}
+      ${(d.estado==='Resuelto')?`
+        <div class="confirm-box">
+          <div class="confirm-title">¿Estás conforme con la respuesta?</div>
+          <p class="qmeta" style="margin:4px 0 10px">Si estás de acuerdo, el caso se cierra. Si no, podés reabrirlo explicando por qué.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="cf-ok" onclick="confirmarColab('${d.codigo}')">✅ De acuerdo, cerrar</button>
+            <button class="cf-no" onclick="mostrarReabrir('${d.codigo}')">↩️ No estoy de acuerdo</button>
+          </div>
+          <div id="reabrirBox" style="display:none;margin-top:10px">
+            <textarea id="reabrirTexto" style="min-height:70px" placeholder="Contanos por qué no estás de acuerdo para que lo revisen de nuevo…"></textarea>
+            <button class="cf-no" style="margin-top:8px" onclick="reabrirColab('${d.codigo}')">Enviar y reabrir caso</button>
+          </div>
+          <div id="confirmMsg" class="alert"></div>
+        </div>`:''}
     </div>`;
   }catch(e){ cont.innerHTML='<div class="seg-estado">Error al consultar: '+e.message+'</div>'; }
+}
+
+/* ---------- Confirmación / reapertura por el colaborador ---------- */
+function mostrarReabrir(){ const b=document.getElementById('reabrirBox'); if(b) b.style.display='block'; }
+
+async function confirmarColab(cod){
+  const msg=document.getElementById('confirmMsg'); msg.className='alert';
+  try{
+    await db.collection('mensajes').doc(cod).collection('historial').add({
+      estado:'Cerrado', nota:'✅ El colaborador confirmó estar de acuerdo. Caso cerrado.',
+      porEmail:'colaborador', en:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await db.collection('mensajes').doc(cod).update({
+      estado:'Cerrado', esperandoConfirmacion:false,
+      actualizado:firebase.firestore.FieldValue.serverTimestamp()});
+    buscar(); // refrescar la vista
+  }catch(e){ msg.className='alert err show'; msg.textContent='No se pudo registrar: '+e.message; }
+}
+
+async function reabrirColab(cod){
+  const msg=document.getElementById('confirmMsg'); msg.className='alert';
+  const texto=(document.getElementById('reabrirTexto').value||'').trim();
+  if(texto.length<5){ msg.className='alert err show'; msg.textContent='Escribí el motivo por el que no estás de acuerdo.'; return; }
+  try{
+    await db.collection('mensajes').doc(cod).collection('historial').add({
+      estado:'En proceso', nota:'↩️ Reabierto por el colaborador: '+texto,
+      porEmail:'colaborador', en:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await db.collection('mensajes').doc(cod).update({
+      estado:'En proceso', esperandoConfirmacion:false,
+      actualizado:firebase.firestore.FieldValue.serverTimestamp()});
+    buscar();
+  }catch(e){ msg.className='alert err show'; msg.textContent='No se pudo reabrir: '+e.message; }
 }
 
 /* ---------- Login RRHH ---------- */
@@ -711,7 +762,9 @@ function pintar(){
       <div class="acciones">
         ${m.archivado
           ? (esAdmin?`<button onclick="restaurarTarjeta('${m.codigo}')">♻️ Restaurar</button>`:'')
-          : `<button onclick="abrirResp('${m.codigo}','${m.estado}')">＋ Actualizar / Responder</button>
+          : `${(m.estado==='Cerrado' && !esAdmin)
+              ? '<span class="qmeta" style="margin:0">🔒 Caso cerrado · solo un administrador puede reabrirlo</span>'
+              : `<button onclick="abrirResp('${m.codigo}','${m.estado}')">＋ Actualizar / Responder</button>`}
              ${esAdmin?`<button class="btn-admin" onclick="abrirEdit('${m.codigo}')">✏️ Editar</button>
              <button class="ic-btn" title="Archivar" onclick="archivarTarjeta('${m.codigo}')">🗄️</button>`:''}`}
       </div>
@@ -770,9 +823,25 @@ async function restaurarTarjeta(cod){
 /* ---------- Modal respuesta ---------- */
 let RESP_COD=null;
 function abrirResp(cod, estadoActual){
+  const esAdmin = MI_ROL==='admin';
+  // Caso cerrado: solo admin puede modificarlo
+  if(estadoActual==='Cerrado' && !esAdmin){
+    alert('Este caso ya está cerrado. Solo un administrador puede reabrirlo o cambiar su estado.');
+    return;
+  }
   RESP_COD=cod;
   document.getElementById('mrCodigo').textContent=cod;
-  document.getElementById('mrEstado').value=estadoActual||'Nuevo';
+  // Estados permitidos según rol:
+  //  - admin: todos (puede reabrir a Nuevo/En proceso un caso cerrado)
+  //  - moderador (RRHH): En proceso, Resuelto, Cerrado (no Nuevo)
+  const estados = esAdmin
+    ? ['Nuevo','En proceso','Resuelto','Cerrado']
+    : ['En proceso','Resuelto','Cerrado'];
+  const sel=document.getElementById('mrEstado');
+  sel.innerHTML=estados.map(s=>`<option ${s===estadoActual?'selected':''}>${s}</option>`).join('');
+  // Si el estado actual no está entre los permitidos (ej. moderador sobre "Nuevo"),
+  // dejamos seleccionado el primero permitido.
+  if(!estados.includes(estadoActual)) sel.value=estados[0];
   document.getElementById('mrTexto').value='';
   document.getElementById('mrErr').classList.remove('show');
   document.getElementById('modalResp').classList.add('show');
@@ -784,6 +853,10 @@ async function guardarResp(){
   const estado=document.getElementById('mrEstado').value;
   const nota=document.getElementById('mrTexto').value.trim();
   const actual=TODOS.find(m=>m.codigo===RESP_COD);
+  // Doble verificación: caso cerrado solo lo cambia admin
+  if(actual && actual.estado==='Cerrado' && MI_ROL!=='admin'){
+    err.textContent='Solo un administrador puede modificar un caso cerrado.'; err.classList.add('show'); return;
+  }
   if(!nota && estado===actual.estado){
     err.textContent='Cambiá el estado o escribí una nota para guardar.'; err.classList.add('show'); return;
   }
@@ -798,6 +871,9 @@ async function guardarResp(){
     // 2) actualizar estado/última respuesta del documento principal
     const data={estado, actualizado:firebase.firestore.FieldValue.serverTimestamp()};
     if(nota) data.respuesta=nota;
+    // limpiar marca de reapertura previa si el moderador retoma el caso
+    if(estado!=='Resuelto') data.esperandoConfirmacion=false;
+    if(estado==='Resuelto') data.esperandoConfirmacion=true;
     await db.collection('mensajes').doc(RESP_COD).update(data);
     delete HIST[RESP_COD]; await cargarHistorial(RESP_COD);
     cerrarModal('modalResp');
