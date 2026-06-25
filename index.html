@@ -25,8 +25,6 @@
   header.top small{display:block;font-weight:400;opacity:.85;font-size:.78rem}
   .wrap{max-width:760px;margin:0 auto;padding:20px}
   .tabs{display:flex;gap:6px;margin:18px 0;flex-wrap:wrap}
-  .tabs button{flex:1;min-width:130px;border:1px solid var(--linea);background:#fff;color:var(--gris);
-    padding:11px 8px;border-radius:10px;font-size:.86rem;font-weight:600;cursor:pointer;transition:.15s}
   .tabs button.active{background:var(--azul);color:#fff;border-color:var(--azul)}
   .card{background:#fff;border:1px solid var(--linea);border-radius:var(--r);padding:22px;
     box-shadow:var(--sombra);margin-bottom:16px}
@@ -127,6 +125,22 @@
   .ic-btn{border:1px solid var(--linea);background:#fff;border-radius:8px;padding:5px 8px;cursor:pointer;
     font-size:.85rem;line-height:1}
   .ic-btn:hover{background:var(--errbg);border-color:#f0c8c2}
+  /* transiciones entre vistas */
+  #v-enviar,#v-seguir,#v-qr,#v-admin{animation:fadeIn .28s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .tabs button{flex:1;min-width:130px;border:1px solid var(--linea);background:#fff;color:var(--gris);
+    padding:11px 8px;border-radius:10px;font-size:.86rem;font-weight:600;cursor:pointer;
+    transition:background .2s,color .2s,border-color .2s,transform .1s}
+  .tabs button:active{transform:scale(.97)}
+  .qcard{animation:fadeIn .25s ease}
+  /* overlay de carga */
+  .overlay{position:fixed;inset:0;background:rgba(11,38,58,.65);display:none;align-items:center;
+    justify-content:center;z-index:200;backdrop-filter:blur(2px)}
+  .overlay.show{display:flex;animation:fadeIn .2s ease}
+  .overlay .box{background:#fff;border-radius:16px;padding:26px 34px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .overlay .big-spin{width:38px;height:38px;border:4px solid var(--azul-soft);border-top-color:var(--azul);
+    border-radius:50%;animation:sp .8s linear infinite;margin:0 auto 12px}
+  .overlay .box span{font-size:.9rem;color:var(--gris);font-weight:600}
 </style>
 </head>
 <body>
@@ -267,7 +281,11 @@
           </select>
           <input id="fBuscar" placeholder="Buscar código o texto…" oninput="pintar()">
         </div>
-        <div class="qmeta" id="contador"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div class="qmeta" id="contador" style="margin:0"></div>
+          <button id="btnArchivados" onclick="toggleArchivados()" style="display:none"
+            class="btn-admin">🗄️ Ver archivados</button>
+        </div>
       </div>
       <div id="lista"></div>
     </div>
@@ -276,18 +294,52 @@
   <p class="muted">Departamento de Sistemas · B&amp;C Exportadores del Valle de Ujarrás</p>
 </div>
 
+<!-- OVERLAY DE CARGA -->
+<div class="overlay" id="overlay">
+  <div class="box"><div class="big-spin"></div><span id="overlayTxt">Ingresando…</span></div>
+</div>
+
+<!-- MODAL EDITAR TARJETA (admin) -->
+<div class="modal-bg" id="modalEdit">
+  <div class="modal">
+    <div class="modal-head">Editar mensaje
+      <small id="meCodigo">—</small></div>
+    <div class="modal-body">
+      <label>Tipo</label>
+      <select id="meTipo">
+        <option>Queja</option><option>Sugerencia</option><option>Felicitación</option><option>Consulta</option>
+      </select>
+      <label>Área</label>
+      <select id="meArea">
+        <option value="">— Sin área —</option>
+        <option>Producción / Planta</option><option>Empaque</option><option>Bodega</option>
+        <option>Mantenimiento</option><option>Calidad</option><option>Recursos Humanos</option>
+        <option>Administración / Finanzas</option><option>Sistemas / TI</option><option>Transporte</option><option>Otro</option>
+      </select>
+      <label>Mensaje</label>
+      <textarea id="meMensaje" style="min-height:100px"></textarea>
+      <div class="hint">Los cambios quedan registrados en el historial como edición administrativa.</div>
+      <div id="meErr" class="alert err"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="cancel" onclick="cerrarModal('modalEdit')">Cancelar</button>
+      <button class="ok" id="meGuardar" onclick="guardarEdit()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL CONFIRMAR ELIMINAR -->
 <div class="modal-bg" id="modalDel">
   <div class="modal" style="max-width:400px">
-    <div class="modal-head" style="background:var(--err)">Quitar acceso</div>
+    <div class="modal-head" style="background:var(--err)">Eliminar usuario</div>
     <div class="modal-body">
-      <p style="margin:0 0 8px">¿Seguro que querés quitar el acceso al panel de:</p>
+      <p style="margin:0 0 8px">¿Seguro que querés eliminar por completo a:</p>
       <p style="margin:0;font-weight:700" id="delEmail">—</p>
-      <div class="hint">Esto lo saca de la lista de usuarios del panel. Su cuenta de login en Firebase no se borra automáticamente; para eliminarla del todo, hacelo en Firebase › Authentication.</div>
+      <div class="hint">Se elimina su acceso al panel y su cuenta de login en Firebase. Esta acción no se puede deshacer.</div>
     </div>
     <div class="modal-foot">
       <button class="cancel" onclick="cerrarModal('modalDel')">Cancelar</button>
-      <button class="ok" id="delBtn" style="background:var(--err)" onclick="confirmarEliminar()">Sí, quitar acceso</button>
+      <button class="ok" id="delBtn" style="background:var(--err)" onclick="confirmarEliminar()">Sí, eliminar usuario</button>
     </div>
   </div>
 </div>
@@ -351,6 +403,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
 <!-- QR -->
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
@@ -368,11 +421,13 @@ const firebaseConfig = {
   appId: "1:137761653790:web:276426fe859af4876f5a0f"
 };
 
-let db=null, auth=null, configOk=false;
+let db=null, auth=null, fns=null, configOk=false;
 try{
   if(firebaseConfig.apiKey!=="TU_API_KEY"){
     firebase.initializeApp(firebaseConfig);
-    db=firebase.firestore(); auth=firebase.auth(); configOk=true;
+    db=firebase.firestore(); auth=firebase.auth();
+    try{ fns=firebase.functions(); }catch(_){ fns=null; }
+    configOk=true;
   }
 }catch(e){ console.error(e); }
 
@@ -386,9 +441,13 @@ if(!configOk){
 /* ---------- Navegación ---------- */
 function vista(v){
   ['enviar','seguir','qr','admin'].forEach(x=>{
-    document.getElementById('v-'+x).style.display = x===v?'block':'none';
+    const el=document.getElementById('v-'+x);
+    el.style.display = x===v?'block':'none';
     document.querySelector(`.tabs button[data-v="${x}"]`).classList.toggle('active',x===v);
   });
+  // reiniciar la animación de entrada
+  const vis=document.getElementById('v-'+v);
+  vis.style.animation='none'; void vis.offsetWidth; vis.style.animation='';
   if(v==='qr') pintarQR();
 }
 
@@ -502,17 +561,34 @@ async function buscar(){
 }
 
 /* ---------- Login RRHH ---------- */
+function showOverlay(txt){ document.getElementById('overlayTxt').textContent=txt||'Cargando…';
+  document.getElementById('overlay').classList.add('show'); }
+function hideOverlay(){ document.getElementById('overlay').classList.remove('show'); }
+
 function login(){
   const errL=document.getElementById('errLogin'); errL.classList.remove('show');
   if(!configOk){ errL.textContent='Firebase no configurado.'; errL.classList.add('show'); return; }
   const em=document.getElementById('email').value.trim();
   const pw=document.getElementById('pass').value;
+  if(!em||!pw){ errL.textContent='Ingresá correo y contraseña.'; errL.classList.add('show'); return; }
   const btn=document.getElementById('btnLogin'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Ingresando…';
+  showOverlay('Ingresando…');
   auth.signInWithEmailAndPassword(em,pw).catch(e=>{
     errL.textContent='No se pudo ingresar. Revisá correo y contraseña.'; errL.classList.add('show');
+    hideOverlay();
   }).finally(()=>{ btn.disabled=false; btn.textContent='Ingresar'; });
 }
-function salir(){ auth.signOut(); }
+
+// Enter en correo o contraseña dispara el ingreso
+['email','pass'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el) el.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); login(); } });
+});
+
+function salir(){
+  showOverlay('Cerrando sesión…');
+  auth.signOut();
+}
 
 let TODOS=[], unsub=null, MI_ROL=null;
 if(configOk){
@@ -523,12 +599,24 @@ if(configOk){
       MI_ROL = await resolverRol(u);
       const etiqueta = MI_ROL==='admin' ? 'Admin' : 'RRHH';
       document.getElementById('who').textContent='Sesión: '+u.email+' · '+etiqueta;
-      document.getElementById('btnUsuarios').style.display = MI_ROL==='admin' ? 'inline-block' : 'none';
+      const esAdmin = MI_ROL==='admin';
+      document.getElementById('btnUsuarios').style.display = esAdmin ? 'inline-block' : 'none';
+      document.getElementById('btnArchivados').style.display = esAdmin ? 'inline-block' : 'none';
+      // limpiar campos de login para la próxima vez
+      document.getElementById('email').value=''; document.getElementById('pass').value='';
+      document.getElementById('errLogin').classList.remove('show');
       escuchar();
+      hideOverlay();
     }else{
-      MI_ROL=null;
+      MI_ROL=null; verArchivados=false;
       document.getElementById('btnUsuarios').style.display='none';
+      document.getElementById('btnArchivados').style.display='none';
+      // dejar el formulario de login limpio (que no quede cargado)
+      document.getElementById('email').value=''; document.getElementById('pass').value='';
+      document.getElementById('errLogin').classList.remove('show');
       if(unsub){ unsub(); unsub=null; }
+      TODOS=[];
+      hideOverlay();
     }
   });
 }
@@ -580,20 +668,36 @@ function renderTL(eventos){
   </div>`).join('');
 }
 
+let verArchivados=false;
+function toggleArchivados(){
+  verArchivados=!verArchivados;
+  document.getElementById('btnArchivados').textContent = verArchivados?'📋 Ver activos':'🗄️ Ver archivados';
+  pintar();
+}
+
 function pintar(){
   const fe=document.getElementById('fEstado').value;
   const ft=document.getElementById('fTipo').value;
   const fb=document.getElementById('fBuscar').value.trim().toLowerCase();
-  let arr=TODOS.filter(m=>(!fe||m.estado===fe)&&(!ft||m.tipo===ft)&&
-    (!fb||(m.codigo||'').toLowerCase().includes(fb)||(m.mensaje||'').toLowerCase().includes(fb)));
-  document.getElementById('contador').textContent=`${arr.length} mensaje(s)`;
+  const esAdmin = MI_ROL==='admin';
+  let arr=TODOS.filter(m=>{
+    const archivada = !!m.archivado;
+    if(verArchivados ? !archivada : archivada) return false;
+    return (!fe||m.estado===fe)&&(!ft||m.tipo===ft)&&
+      (!fb||(m.codigo||'').toLowerCase().includes(fb)||(m.mensaje||'').toLowerCase().includes(fb));
+  });
+  document.getElementById('contador').textContent=
+    `${arr.length} mensaje(s)${verArchivados?' archivado(s)':''}`;
   const L=document.getElementById('lista');
-  if(!arr.length){ L.innerHTML='<div class="card muted">No hay mensajes con esos filtros.</div>'; return; }
+  if(!arr.length){ L.innerHTML='<div class="card muted">'+(verArchivados?'No hay mensajes archivados.':'No hay mensajes con esos filtros.')+'</div>'; return; }
   L.innerHTML=arr.map(m=>`
-    <div class="qcard">
+    <div class="qcard"${m.archivado?' style="opacity:.75"':''}>
       <div class="qh">
         <span class="qcode">${m.codigo}</span>
-        <span class="badge ${ESTADO_CLASE[m.estado]||'b-nuevo'}">${m.estado}</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          ${m.archivado?'<span class="badge b-cerrado">Archivado</span>':''}
+          <span class="badge ${ESTADO_CLASE[m.estado]||'b-nuevo'}">${m.estado}</span>
+        </div>
       </div>
       <div class="qtipo">${m.tipo}${m.area?' · '+escHtml(m.area):''}</div>
       <div class="qmeta">${fechaTxt(m.creado)}
@@ -605,11 +709,62 @@ function pintar(){
         <div id="tl_${m.codigo}">${HIST[m.codigo]?renderTL(HIST[m.codigo]):'<div class="qmeta">Cargando…</div>'}</div>
       </div>
       <div class="acciones">
-        <button onclick="abrirResp('${m.codigo}','${m.estado}')">＋ Actualizar / Responder</button>
+        ${m.archivado
+          ? (esAdmin?`<button onclick="restaurarTarjeta('${m.codigo}')">♻️ Restaurar</button>`:'')
+          : `<button onclick="abrirResp('${m.codigo}','${m.estado}')">＋ Actualizar / Responder</button>
+             ${esAdmin?`<button class="btn-admin" onclick="abrirEdit('${m.codigo}')">✏️ Editar</button>
+             <button class="ic-btn" title="Archivar" onclick="archivarTarjeta('${m.codigo}')">🗄️</button>`:''}`}
       </div>
     </div>`).join('');
-  // cargar historial faltante
   arr.forEach(m=>{ if(!HIST[m.codigo]) cargarHistorial(m.codigo); });
+}
+
+/* ---------- Editar / archivar tarjeta (admin) ---------- */
+let EDIT_COD=null;
+function abrirEdit(cod){
+  if(MI_ROL!=='admin') return;
+  const m=TODOS.find(x=>x.codigo===cod); if(!m) return;
+  EDIT_COD=cod;
+  document.getElementById('meCodigo').textContent=cod;
+  document.getElementById('meTipo').value=m.tipo||'Queja';
+  document.getElementById('meArea').value=m.area||'';
+  document.getElementById('meMensaje').value=m.mensaje||'';
+  document.getElementById('meErr').classList.remove('show');
+  document.getElementById('modalEdit').classList.add('show');
+}
+async function guardarEdit(){
+  const err=document.getElementById('meErr'); err.classList.remove('show');
+  const tipo=document.getElementById('meTipo').value;
+  const area=document.getElementById('meArea').value||null;
+  const mensaje=document.getElementById('meMensaje').value.trim();
+  if(mensaje.length<5){ err.textContent='El mensaje no puede quedar vacío.'; err.classList.add('show'); return; }
+  const btn=document.getElementById('meGuardar'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Guardando…';
+  try{
+    const email=auth.currentUser?auth.currentUser.email:null;
+    await db.collection('mensajes').doc(EDIT_COD).update({tipo,area,mensaje,
+      actualizado:firebase.firestore.FieldValue.serverTimestamp()});
+    await db.collection('mensajes').doc(EDIT_COD).collection('historial').add({
+      estado:(TODOS.find(x=>x.codigo===EDIT_COD)||{}).estado||'Nuevo',
+      nota:'✏️ Mensaje editado por administración', porEmail:email,
+      en:firebase.firestore.FieldValue.serverTimestamp()});
+    delete HIST[EDIT_COD]; await cargarHistorial(EDIT_COD);
+    cerrarModal('modalEdit');
+  }catch(e){ err.textContent='Error: '+e.message; err.classList.add('show'); }
+  finally{ btn.disabled=false; btn.textContent='Guardar cambios'; }
+}
+async function archivarTarjeta(cod){
+  if(MI_ROL!=='admin') return;
+  try{
+    const email=auth.currentUser?auth.currentUser.email:null;
+    await db.collection('mensajes').doc(cod).update({archivado:true,
+      archivadoPor:email, archivadoEn:firebase.firestore.FieldValue.serverTimestamp()});
+  }catch(e){ alert('No se pudo archivar: '+e.message); }
+}
+async function restaurarTarjeta(cod){
+  if(MI_ROL!=='admin') return;
+  try{ await db.collection('mensajes').doc(cod).update({archivado:false,
+    archivadoPor:null, archivadoEn:null}); }
+  catch(e){ alert('No se pudo restaurar: '+e.message); }
 }
 
 /* ---------- Modal respuesta ---------- */
@@ -703,14 +858,29 @@ function eliminarUsuario(uid, email){
 }
 async function confirmarEliminar(){
   if(!DEL_UID) return;
-  const btn=document.getElementById('delBtn'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Quitando…';
+  const btn=document.getElementById('delBtn'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Eliminando…';
+  const msg=document.getElementById('nuMsg');
   try{
-    await db.collection('adminUsers').doc(DEL_UID).delete();
+    let borradoAuth=false;
+    // 1) intentar borrado TOTAL vía Cloud Function (Auth + Firestore)
+    if(fns){
+      try{
+        const fn=fns.httpsCallable('eliminarUsuario');
+        await fn({uid:DEL_UID});
+        borradoAuth=true;
+      }catch(fnErr){ console.warn('Cloud Function no disponible o falló:', fnErr.message); }
+    }
+    // 2) si la función no borró, al menos quitar de Firestore (acceso al panel)
+    if(!borradoAuth){
+      await db.collection('adminUsers').doc(DEL_UID).delete();
+    }
     cerrarModal('modalDel'); listarUsuarios();
-    const msg=document.getElementById('nuMsg'); msg.className='alert ok show';
-    msg.textContent='✅ Acceso retirado para '+DEL_EMAIL+'. Para borrar también su login, eliminalo en Firebase › Authentication.';
-  }catch(e){ alert('No se pudo quitar: '+e.message); }
-  finally{ btn.disabled=false; btn.textContent='Sí, quitar acceso'; DEL_UID=null; }
+    msg.className='alert ok show';
+    msg.textContent = borradoAuth
+      ? '✅ Usuario eliminado por completo (login y acceso): '+DEL_EMAIL
+      : '✅ Acceso retirado para '+DEL_EMAIL+'. (La Cloud Function de borrado total no está activa; el login sigue en Firebase › Authentication.)';
+  }catch(e){ alert('No se pudo eliminar: '+e.message); }
+  finally{ btn.disabled=false; btn.textContent='Sí, eliminar usuario'; DEL_UID=null; }
 }
 
 async function crearUsuario(){
