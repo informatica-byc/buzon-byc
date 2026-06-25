@@ -139,7 +139,7 @@
     <button data-v="enviar" class="active" onclick="vista('enviar')">📝 Enviar</button>
     <button data-v="seguir" onclick="vista('seguir')">🔎 Dar seguimiento</button>
     <button data-v="qr" onclick="vista('qr')">📱 Código QR</button>
-    <button data-v="admin" onclick="vista('admin')">🔐 RRHH</button>
+    <button data-v="admin" onclick="vista('admin')">🔐 RRHH / Admin</button>
   </div>
 
   <!-- ENVIAR -->
@@ -242,7 +242,7 @@
         <div class="toprow">
           <div class="who" id="who"></div>
           <div style="display:flex;gap:8px;align-items:center">
-            <button class="btn-admin" onclick="abrirUsuarios()">👥 Administrar usuarios</button>
+            <button class="btn-admin" id="btnUsuarios" onclick="abrirUsuarios()" style="display:none">👥 Administrar usuarios</button>
             <button class="salir" onclick="salir()">Cerrar sesión</button>
           </div>
         </div>
@@ -302,9 +302,20 @@
     <div class="modal-body">
       <label>Correo del nuevo usuario</label>
       <input id="nuEmail" type="email" placeholder="nombre@bycexportadores.com">
-      <label>Contraseña temporal</label>
-      <input id="nuPass" type="text" placeholder="Mínimo 6 caracteres">
-      <div class="hint">El usuario podrá cambiarla luego. Se crea con acceso completo al panel.</div>
+      <div class="row2">
+        <div>
+          <label>Rol</label>
+          <select id="nuRol">
+            <option value="rrhh">RRHH (gestiona mensajes)</option>
+            <option value="admin">Admin (gestiona mensajes y usuarios)</option>
+          </select>
+        </div>
+        <div>
+          <label>Contraseña temporal</label>
+          <input id="nuPass" type="text" placeholder="Mínimo 6 caracteres">
+        </div>
+      </div>
+      <div class="hint">El usuario podrá cambiarla luego. Admin puede crear y editar usuarios; RRHH solo gestiona los mensajes.</div>
       <button class="btn" style="margin-top:14px" id="nuCrear" onclick="crearUsuario()">Crear usuario</button>
       <div id="nuMsg" class="alert"></div>
       <div class="tl-title" style="margin-top:18px">Usuarios registrados</div>
@@ -483,16 +494,42 @@ function login(){
 }
 function salir(){ auth.signOut(); }
 
-let TODOS=[], unsub=null;
+let TODOS=[], unsub=null, MI_ROL=null;
 if(configOk){
-  auth.onAuthStateChanged(u=>{
+  auth.onAuthStateChanged(async u=>{
     document.getElementById('loginCard').style.display = u?'none':'block';
     document.getElementById('panelCard').style.display = u?'block':'none';
     if(u){
-      document.getElementById('who').textContent='Sesión: '+u.email;
+      MI_ROL = await resolverRol(u);
+      const etiqueta = MI_ROL==='admin' ? 'Admin' : 'RRHH';
+      document.getElementById('who').textContent='Sesión: '+u.email+' · '+etiqueta;
+      document.getElementById('btnUsuarios').style.display = MI_ROL==='admin' ? 'inline-block' : 'none';
       escuchar();
-    }else if(unsub){ unsub(); unsub=null; }
+    }else{
+      MI_ROL=null;
+      document.getElementById('btnUsuarios').style.display='none';
+      if(unsub){ unsub(); unsub=null; }
+    }
   });
+}
+
+/* Lee/crea el rol del usuario en adminUsers. Corrige automáticamente:
+   los correos que contienen "informatica" se marcan como admin. */
+async function resolverRol(u){
+  const ref=db.collection('adminUsers').doc(u.uid);
+  try{
+    const snap=await ref.get();
+    const esInformatica=(u.email||'').toLowerCase().includes('informatica');
+    if(!snap.exists){
+      const rol=esInformatica?'admin':'rrhh';
+      await ref.set({email:u.email, rol, creado:firebase.firestore.FieldValue.serverTimestamp(),
+        creadoPor:'auto'}, {merge:true});
+      return rol;
+    }
+    let rol=snap.data().rol||'rrhh';
+    if(esInformatica && rol!=='admin'){ await ref.set({rol:'admin'},{merge:true}); rol='admin'; }
+    return rol;
+  }catch(e){ console.error('rol:',e); return 'rrhh'; }
 }
 
 function escuchar(){
@@ -596,30 +633,48 @@ async function guardarResp(){
 /* ---------- util ---------- */
 function escHtml(s){ return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-/* ---------- Gestión de usuarios ---------- */
+/* ---------- Gestión de usuarios (solo admin) ---------- */
 function abrirUsuarios(){
+  if(MI_ROL!=='admin'){ return; }
   document.getElementById('nuEmail').value='';
   document.getElementById('nuPass').value='';
+  document.getElementById('nuRol').value='rrhh';
   document.getElementById('nuMsg').classList.remove('show');
   document.getElementById('modalUsers').classList.add('show');
   listarUsuarios();
 }
 
+const ROL_TXT={admin:'Admin', rrhh:'RRHH'};
 async function listarUsuarios(){
   const cont=document.getElementById('nuLista');
   try{
     const snap=await db.collection('adminUsers').orderBy('creado','desc').get();
     if(snap.empty){ cont.innerHTML='<div class="muted" style="padding:8px">Aún no hay usuarios registrados aquí.</div>'; return; }
-    cont.innerHTML=snap.docs.map(d=>{const u=d.data();
-      return `<div class="user-row"><span>${escHtml(u.email)}</span>
-        <span class="qmeta" style="margin:0">${fechaTxt(u.creado)}</span></div>`;}).join('');
+    const yo=auth.currentUser?auth.currentUser.uid:null;
+    cont.innerHTML=snap.docs.map(d=>{const u=d.data(); const rol=u.rol||'rrhh'; const esYo=d.id===yo;
+      return `<div class="user-row">
+        <div><div>${escHtml(u.email)}${esYo?' <span class="qmeta" style="margin:0">(vos)</span>':''}</div>
+          <span class="qmeta" style="margin:0">${ROL_TXT[rol]||rol} · ${fechaTxt(u.creado)}</span></div>
+        <select onchange="cambiarRol('${d.id}', this.value)" ${esYo?'disabled title="No podés cambiar tu propio rol"':''}
+          style="width:auto;padding:5px 8px;font-size:.8rem">
+          <option value="rrhh" ${rol==='rrhh'?'selected':''}>RRHH</option>
+          <option value="admin" ${rol==='admin'?'selected':''}>Admin</option>
+        </select>
+      </div>`;}).join('');
   }catch(e){ cont.innerHTML='<div class="muted" style="padding:8px">No se pudo cargar la lista.</div>'; }
 }
 
+async function cambiarRol(uid, rol){
+  try{ await db.collection('adminUsers').doc(uid).set({rol},{merge:true}); listarUsuarios(); }
+  catch(e){ alert('No se pudo cambiar el rol: '+e.message); }
+}
+
 async function crearUsuario(){
+  if(MI_ROL!=='admin'){ return; }
   const msg=document.getElementById('nuMsg'); msg.className='alert';
   const email=document.getElementById('nuEmail').value.trim();
   const pass=document.getElementById('nuPass').value;
+  const rol=document.getElementById('nuRol').value;
   if(!email||pass.length<6){ msg.textContent='Ingresá un correo válido y una contraseña de mínimo 6 caracteres.';
     msg.classList.add('err','show'); return; }
   const btn=document.getElementById('nuCrear'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Creando…';
@@ -629,11 +684,11 @@ async function crearUsuario(){
     secApp=firebase.initializeApp(firebaseConfig,'secondary-'+Date.now());
     const cred=await secApp.auth().createUserWithEmailAndPassword(email,pass);
     await db.collection('adminUsers').doc(cred.user.uid).set({
-      email, creado:firebase.firestore.FieldValue.serverTimestamp(),
+      email, rol, creado:firebase.firestore.FieldValue.serverTimestamp(),
       creadoPor: auth.currentUser?auth.currentUser.email:null
     });
     await secApp.auth().signOut();
-    msg.textContent='✅ Usuario creado: '+email; msg.classList.add('ok','show');
+    msg.textContent='✅ Usuario creado: '+email+' ('+(ROL_TXT[rol]||rol)+')'; msg.classList.add('ok','show');
     document.getElementById('nuEmail').value=''; document.getElementById('nuPass').value='';
     listarUsuarios();
   }catch(e){
