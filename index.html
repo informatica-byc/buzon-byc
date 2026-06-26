@@ -147,6 +147,35 @@
   .cf-ok,.cf-no{border:none;border-radius:9px;padding:10px 14px;font-weight:700;font-size:.86rem;cursor:pointer}
   .cf-ok{background:var(--ok);color:#fff}
   .cf-no{background:#fff;color:var(--err);border:1px solid #f0c8c2}
+  /* sub-navegación del panel */
+  .subtabs{display:flex;gap:6px;margin-top:14px}
+  .subtabs button{flex:1;border:1px solid var(--linea);background:#fff;color:var(--gris);
+    padding:10px;border-radius:10px;font-size:.88rem;font-weight:600;cursor:pointer;transition:.18s}
+  .subtabs button.active{background:var(--azul);color:#fff;border-color:var(--azul)}
+  /* filtro de período */
+  .periodo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;padding-top:12px;
+    border-top:1px dashed var(--linea)}
+  .periodo .per-lbl{font-size:.8rem;font-weight:700;color:var(--azul)}
+  .periodo label{display:inline-flex;align-items:center;gap:5px;margin:0;font-size:.78rem;
+    font-weight:600;color:var(--gris)}
+  .periodo input[type=date]{width:auto;padding:7px 9px;font-size:.84rem}
+  .per-quick{display:flex;gap:5px;flex-wrap:wrap;margin-left:auto}
+  .per-quick button{border:1px solid var(--linea);background:#fff;color:var(--azul);border-radius:8px;
+    padding:6px 10px;font-size:.76rem;font-weight:600;cursor:pointer}
+  .per-quick button:hover{background:var(--azul-soft)}
+  /* KPIs */
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:16px}
+  .kpi{border:1px solid var(--linea);border-radius:12px;padding:14px;background:linear-gradient(135deg,#fff,var(--azul-soft))}
+  .kpi .k-val{font-size:1.7rem;font-weight:800;color:var(--azul);line-height:1.1}
+  .kpi .k-lbl{font-size:.76rem;color:var(--gris);font-weight:600;margin-top:4px}
+  .kpi .k-sub{font-size:.7rem;color:var(--gris);margin-top:2px}
+  /* gráficos */
+  .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:6px}
+  .chart-box{border:1px solid var(--linea);border-radius:12px;padding:14px;min-width:0}
+  .chart-box.chart-wide{grid-column:1 / -1}
+  .chart-t{font-size:.84rem;font-weight:700;color:var(--tinta);margin-bottom:8px}
+  .chart-box canvas{max-height:260px}
+  @media(max-width:640px){.chart-grid{grid-template-columns:1fr}.chart-box.chart-wide{grid-column:auto}}
 </style>
 </head>
 <body>
@@ -270,30 +299,84 @@
             <button class="salir" onclick="salir()">Cerrar sesión</button>
           </div>
         </div>
-        <div class="filtros">
-          <select id="fEstado" onchange="pintar()">
-            <option value="">Todos los estados</option>
-            <option value="Nuevo">Nuevo</option>
-            <option value="En proceso">En proceso</option>
-            <option value="Resuelto">Resuelto</option>
-            <option value="Cerrado">Cerrado</option>
-          </select>
-          <select id="fTipo" onchange="pintar()">
-            <option value="">Todos los tipos</option>
-            <option>Queja</option>
-            <option>Sugerencia</option>
-            <option>Felicitación</option>
-            <option>Consulta</option>
-          </select>
-          <input id="fBuscar" placeholder="Buscar código o texto…" oninput="pintar()">
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-          <div class="qmeta" id="contador" style="margin:0"></div>
-          <button id="btnArchivados" onclick="toggleArchivados()" style="display:none"
-            class="btn-admin">🗄️ Ver archivados</button>
+        <div class="subtabs">
+          <button id="stMensajes" class="active" onclick="panelVista('mensajes')">📋 Mensajes</button>
+          <button id="stDashboard" onclick="panelVista('dashboard')">📊 Dashboard</button>
         </div>
       </div>
-      <div id="lista"></div>
+
+      <!-- VISTA MENSAJES -->
+      <div id="pv-mensajes">
+        <div class="card">
+          <div class="filtros">
+            <select id="fEstado" onchange="pintar()">
+              <option value="">Todos los estados</option>
+              <option value="Nuevo">Nuevo</option>
+              <option value="En proceso">En proceso</option>
+              <option value="Resuelto">Resuelto</option>
+              <option value="Cerrado">Cerrado</option>
+            </select>
+            <select id="fTipo" onchange="pintar()">
+              <option value="">Todos los tipos</option>
+              <option>Queja</option>
+              <option>Sugerencia</option>
+              <option>Felicitación</option>
+              <option>Consulta</option>
+            </select>
+            <input id="fBuscar" placeholder="Buscar código o texto…" oninput="pintar()">
+          </div>
+          <div class="periodo">
+            <span class="per-lbl">Período:</span>
+            <label>Desde <input type="date" id="mDesde" onchange="pintar()"></label>
+            <label>Hasta <input type="date" id="mHasta" onchange="pintar()"></label>
+            <div class="per-quick">
+              <button onclick="rangoRapido('m','mes')">Este mes</button>
+              <button onclick="rangoRapido('m','mesAnt')">Mes pasado</button>
+              <button onclick="rangoRapido('m','anio')">Este año</button>
+              <button onclick="rangoRapido('m','todo')">Todo</button>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <div class="qmeta" id="contador" style="margin:0"></div>
+            <button id="btnArchivados" onclick="toggleArchivados()" style="display:none"
+              class="btn-admin">🗄️ Ver archivados</button>
+          </div>
+        </div>
+        <div id="lista"></div>
+      </div>
+
+      <!-- VISTA DASHBOARD -->
+      <div id="pv-dashboard" style="display:none">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+            <div>
+              <h2 class="sec" style="margin:0">Resumen general</h2>
+              <p class="sub" style="margin:0">KPIs e indicadores de todo el buzón.</p>
+            </div>
+            <button class="btn-admin" id="btnExportar" onclick="exportarExcel()">⬇️ Exportar a Excel</button>
+          </div>
+          <div class="periodo">
+            <span class="per-lbl">Período:</span>
+            <label>Desde <input type="date" id="dDesde" onchange="renderDashboard()"></label>
+            <label>Hasta <input type="date" id="dHasta" onchange="renderDashboard()"></label>
+            <div class="per-quick">
+              <button onclick="rangoRapido('d','mes')">Este mes</button>
+              <button onclick="rangoRapido('d','mesAnt')">Mes pasado</button>
+              <button onclick="rangoRapido('d','anio')">Este año</button>
+              <button onclick="rangoRapido('d','todo')">Todo</button>
+            </div>
+          </div>
+          <div id="kpis" class="kpi-grid"></div>
+        </div>
+        <div class="card">
+          <div class="chart-grid">
+            <div class="chart-box"><div class="chart-t">Por estado</div><canvas id="chEstado"></canvas></div>
+            <div class="chart-box"><div class="chart-t">Por tipo</div><canvas id="chTipo"></canvas></div>
+            <div class="chart-box chart-wide"><div class="chart-t">Por área</div><canvas id="chArea"></canvas></div>
+            <div class="chart-box chart-wide"><div class="chart-t">Tendencia mensual</div><canvas id="chMes"></canvas></div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -410,6 +493,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
 <!-- QR -->
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 
 <script>
 /* ============================================================
@@ -547,7 +632,7 @@ async function buscar(){
     if(eventos.length){
       tl='<div class="tl"><div class="tl-title">Seguimiento</div>'+
         eventos.map(e=>`<div class="tl-item">
-          <span class="tl-dot tl-d-${(e.estado||'Nuevo').toLowerCase().replace(' ','').replace('enproceso','proceso')}"></span>
+          <span class="tl-dot tl-d-${tlClase(e.estado)}"></span>
           <div class="tl-when">${fechaTxt(e.en)}</div>
           <div class="tl-estado">${e.estado||''}</div>
           ${e.nota?`<div class="tl-resp">${escHtml(e.nota)}</div>`:''}
@@ -765,6 +850,51 @@ function renderTL(eventos){
   </div>`).join('');
 }
 
+/* ---------- Filtro de período (desde/hasta por fecha de creación) ---------- */
+// Lee los inputs de fecha y devuelve {desde, hasta} en ms (o null)
+function leerRango(prefijo){
+  const dDesde=document.getElementById(prefijo+'Desde');
+  const dHasta=document.getElementById(prefijo+'Hasta');
+  let desde=null, hasta=null;
+  if(dDesde && dDesde.value){ desde=new Date(dDesde.value+'T00:00:00').getTime(); }
+  if(dHasta && dHasta.value){ hasta=new Date(dHasta.value+'T23:59:59').getTime(); }
+  return {desde, hasta};
+}
+function enRango(m, rango){
+  if(!rango.desde && !rango.hasta) return true;
+  const cr=toDate(m.creado); if(!cr) return true;
+  const t=cr.getTime();
+  if(rango.desde && t<rango.desde) return false;
+  if(rango.hasta && t>rango.hasta) return false;
+  return true;
+}
+// Botones rápidos. ctx='m' (mensajes) o 'd' (dashboard)
+function rangoRapido(ctx, tipo){
+  const hoy=new Date();
+  let desde=null, hasta=null;
+  if(tipo==='mes'){
+    desde=new Date(hoy.getFullYear(),hoy.getMonth(),1);
+    hasta=new Date(hoy.getFullYear(),hoy.getMonth()+1,0);
+  }else if(tipo==='mesAnt'){
+    desde=new Date(hoy.getFullYear(),hoy.getMonth()-1,1);
+    hasta=new Date(hoy.getFullYear(),hoy.getMonth(),0);
+  }else if(tipo==='anio'){
+    desde=new Date(hoy.getFullYear(),0,1);
+    hasta=new Date(hoy.getFullYear(),11,31);
+  } // 'todo' deja ambos vacíos
+  const fmt=d=> d? d.toISOString().slice(0,10):'';
+  document.getElementById(ctx+'Desde').value=fmt(desde);
+  document.getElementById(ctx+'Hasta').value=fmt(hasta);
+  if(ctx==='m') pintar(); else renderDashboard();
+}
+function rangoTexto(rango){
+  const f=t=>{ const d=new Date(t); return d.toLocaleDateString('es-CR',{day:'2-digit',month:'short',year:'numeric'}); };
+  if(rango.desde && rango.hasta) return f(rango.desde)+' – '+f(rango.hasta);
+  if(rango.desde) return 'desde '+f(rango.desde);
+  if(rango.hasta) return 'hasta '+f(rango.hasta);
+  return 'Todo el período';
+}
+
 let verArchivados=false;
 function toggleArchivados(){
   verArchivados=!verArchivados;
@@ -776,10 +906,12 @@ function pintar(){
   const fe=document.getElementById('fEstado').value;
   const ft=document.getElementById('fTipo').value;
   const fb=document.getElementById('fBuscar').value.trim().toLowerCase();
+  const rango=leerRango('m');
   const esAdmin = MI_ROL==='admin';
   let arr=TODOS.filter(m=>{
     const archivada = !!m.archivado;
     if(verArchivados ? !archivada : archivada) return false;
+    if(!enRango(m, rango)) return false;
     return (!fe||m.estado===fe)&&(!ft||m.tipo===ft)&&
       (!fb||(m.codigo||'').toLowerCase().includes(fb)||(m.mensaje||'').toLowerCase().includes(fb));
   });
@@ -816,6 +948,288 @@ function pintar(){
       </div>
     </div>`).join('');
   arr.forEach(m=>{ if(!HIST[m.codigo]) cargarHistorial(m.codigo); });
+}
+
+/* ===================== DASHBOARD ===================== */
+let panelActual='mensajes';
+function panelVista(v){
+  panelActual=v;
+  document.getElementById('pv-mensajes').style.display = v==='mensajes'?'block':'none';
+  document.getElementById('pv-dashboard').style.display = v==='dashboard'?'block':'none';
+  document.getElementById('stMensajes').classList.toggle('active', v==='mensajes');
+  document.getElementById('stDashboard').classList.toggle('active', v==='dashboard');
+  if(v==='dashboard') prepararDashboard();
+}
+
+async function prepararDashboard(){
+  // asegurar historial de todos los mensajes (para tiempos y reaperturas)
+  const faltan=TODOS.filter(m=>!HIST[m.codigo]);
+  if(faltan.length){
+    document.getElementById('kpis').innerHTML='<div class="muted" style="grid-column:1/-1">Calculando indicadores…</div>';
+    await Promise.all(faltan.map(m=>cargarHistorial(m.codigo).catch(()=>{})));
+  }
+  renderDashboard();
+}
+
+const ESTADOS_ORD=['Nuevo','En proceso','Resuelto','Cerrado'];
+const TIPOS_ORD=['Queja','Sugerencia','Felicitación','Consulta'];
+const COL={azul:'#0B3D66',azul2:'#1A6AA8',verde:'#1f9d6b',ambar:'#c47a18',gris:'#7a8694'};
+
+function toDate(x){ if(!x) return null; return x.toDate?x.toDate():new Date(x); }
+
+// Calcula todas las métricas a partir de TODOS (mensajes) y HIST (historiales)
+function calcularMetricas(rango){
+  rango = rango || {desde:null, hasta:null};
+  const activos = TODOS.filter(m=>!m.archivado && enRango(m, rango));
+  const total = activos.length;
+  const porEstado={}; ESTADOS_ORD.forEach(e=>porEstado[e]=0);
+  const porTipo={}; TIPOS_ORD.forEach(t=>porTipo[t]=0);
+  const porArea={};
+  const porMes={};
+  let cerrados=0, cerradosAuto=0, reabiertos=0, resueltos=0;
+  let sumaPrimerResp=0, nPrimerResp=0;     // horas hasta primer cambio de estado
+  let sumaResolucion=0, nResolucion=0;     // horas hasta Resuelto/Cerrado
+
+  activos.forEach(m=>{
+    porEstado[m.estado]=(porEstado[m.estado]||0)+1;
+    if(m.tipo) porTipo[m.tipo]=(porTipo[m.tipo]||0)+1;
+    const a=m.area||'Sin área'; porArea[a]=(porArea[a]||0)+1;
+    const cr=toDate(m.creado);
+    if(cr){ const k=cr.getFullYear()+'-'+String(cr.getMonth()+1).padStart(2,'0'); porMes[k]=(porMes[k]||0)+1; }
+    if(m.estado==='Cerrado'){ cerrados++; if(m.cerradoAuto) cerradosAuto++; }
+
+    const ev=(HIST[m.codigo]||[]).slice().sort((x,y)=>{
+      const dx=toDate(x.en)?.getTime()||0, dy=toDate(y.en)?.getTime()||0; return dx-dy;});
+    // reaperturas: eventos que vuelven a "En proceso" después de un "Resuelto"
+    let vioResuelto=false;
+    ev.forEach(e=>{
+      if(e.estado==='Resuelto') vioResuelto=true;
+      if(e.estado==='En proceso' && vioResuelto){ reabiertos++; vioResuelto=false; }
+    });
+    if(ev.some(e=>e.estado==='Resuelto')) resueltos++;
+    // primer respuesta: del creado al primer evento que no sea "Nuevo"
+    if(cr){
+      const primer=ev.find(e=>e.estado && e.estado!=='Nuevo');
+      if(primer){ const t=toDate(primer.en); if(t){ sumaPrimerResp+=(t-cr)/36e5; nPrimerResp++; } }
+      const resol=ev.find(e=>e.estado==='Resuelto'||e.estado==='Cerrado');
+      if(resol){ const t=toDate(resol.en); if(t){ sumaResolucion+=(t-cr)/36e5; nResolucion++; } }
+    }
+  });
+
+  const horasFmt=h=>{ if(!isFinite(h)||h<=0) return '—'; if(h<48) return h.toFixed(1)+' h'; return (h/24).toFixed(1)+' d'; };
+  return {
+    total, porEstado, porTipo, porArea, porMes,
+    cerrados, cerradosAuto, reabiertos, resueltos,
+    pctCerradoAuto: cerrados? (cerradosAuto/cerrados*100):0,
+    tasaReapertura: resueltos? (reabiertos/resueltos*100):0,
+    primerRespProm: nPrimerResp? sumaPrimerResp/nPrimerResp:0,
+    resolucionProm: nResolucion? sumaResolucion/nResolucion:0,
+    horasFmt
+  };
+}
+
+let charts={};
+function destruirCharts(){ Object.values(charts).forEach(c=>{try{c.destroy();}catch(_){}}); charts={}; }
+
+function renderDashboard(){
+  const rango=leerRango('d');
+  const M=calcularMetricas(rango);
+  // mostrar el período activo en el subtítulo
+  const sub=document.querySelector('#pv-dashboard .sub');
+  if(sub) sub.textContent='KPIs e indicadores · '+rangoTexto(rango);
+  // KPIs
+  document.getElementById('kpis').innerHTML=[
+    ['📨', M.total, 'Total de mensajes', ''],
+    ['🆕', M.porEstado['Nuevo']||0, 'Nuevos', 'sin atender'],
+    ['⏳', M.porEstado['En proceso']||0, 'En proceso', ''],
+    ['✅', M.porEstado['Resuelto']||0, 'Resueltos', ''],
+    ['🔒', M.porEstado['Cerrado']||0, 'Cerrados', ''],
+    ['↩️', M.tasaReapertura.toFixed(0)+'%', 'Tasa de reapertura', M.reabiertos+' reabierto(s)'],
+    ['🤖', M.pctCerradoAuto.toFixed(0)+'%', 'Cerrados automáticamente', M.cerradosAuto+' caso(s)'],
+    ['⚡', M.horasFmt(M.primerRespProm), 'Primera respuesta (prom.)', ''],
+    ['🎯', M.horasFmt(M.resolucionProm), 'Tiempo de resolución (prom.)', ''],
+  ].map(([ic,val,lbl,sub])=>`<div class="kpi">
+      <div class="k-val">${ic} ${val}</div>
+      <div class="k-lbl">${lbl}</div>${sub?`<div class="k-sub">${sub}</div>`:''}
+    </div>`).join('');
+
+  if(typeof Chart==='undefined') return;
+  destruirCharts();
+  const baseOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:11}}}}};
+
+  // Por estado (dona)
+  charts.estado=new Chart(document.getElementById('chEstado'),{type:'doughnut',
+    data:{labels:ESTADOS_ORD,datasets:[{data:ESTADOS_ORD.map(e=>M.porEstado[e]||0),
+      backgroundColor:[COL.azul2,COL.ambar,COL.verde,COL.gris]}]},options:baseOpts});
+
+  // Por tipo (barra)
+  charts.tipo=new Chart(document.getElementById('chTipo'),{type:'bar',
+    data:{labels:TIPOS_ORD,datasets:[{label:'Mensajes',data:TIPOS_ORD.map(t=>M.porTipo[t]||0),
+      backgroundColor:COL.azul}]},options:{...baseOpts,plugins:{legend:{display:false}},
+      scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
+
+  // Por área (barra horizontal)
+  const areas=Object.keys(M.porArea).sort((a,b)=>M.porArea[b]-M.porArea[a]);
+  charts.area=new Chart(document.getElementById('chArea'),{type:'bar',
+    data:{labels:areas,datasets:[{label:'Mensajes',data:areas.map(a=>M.porArea[a]),
+      backgroundColor:COL.azul2}]},options:{...baseOpts,indexAxis:'y',plugins:{legend:{display:false}},
+      scales:{x:{beginAtZero:true,ticks:{precision:0}}}}});
+
+  // Tendencia mensual (línea)
+  const meses=Object.keys(M.porMes).sort();
+  charts.mes=new Chart(document.getElementById('chMes'),{type:'line',
+    data:{labels:meses,datasets:[{label:'Mensajes por mes',data:meses.map(k=>M.porMes[k]),
+      borderColor:COL.azul,backgroundColor:'rgba(26,106,168,.15)',fill:true,tension:.3}]},
+    options:{...baseOpts,scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
+}
+
+/* ===================== EXPORT EXCEL ===================== */
+// Genera un PNG de un gráfico en un canvas oculto (para incrustar en Excel)
+function graficoPNG(tipo, labels, data, titulo, colores, horizontal){
+  return new Promise(resolve=>{
+    if(typeof Chart==='undefined'){ resolve(null); return; }
+    const cv=document.createElement('canvas');
+    cv.width=880; cv.height=560;            // alta resolución
+    cv.style.position='fixed'; cv.style.left='-9999px'; cv.style.background='#fff';
+    document.body.appendChild(cv);
+    const ds={label:titulo,data,backgroundColor:colores,borderColor:Array.isArray(colores)?colores:colores};
+    if(tipo==='line'){ ds.fill=true; ds.backgroundColor='rgba(26,106,168,.15)'; ds.borderColor=colores; ds.tension=.3; }
+    const cfg={type:tipo,data:{labels,datasets:[ds]},
+      options:{responsive:false,animation:false,devicePixelRatio:2,
+        plugins:{legend:{display:tipo==='doughnut'},title:{display:true,text:titulo,font:{size:16}}},
+        indexAxis:horizontal?'y':'x',
+        scales:tipo==='doughnut'?{}:{x:{ticks:{precision:0}},y:{beginAtZero:true,ticks:{precision:0}}}}};
+    const ch=new Chart(cv,cfg);
+    // dar un frame para que pinte y luego capturar
+    requestAnimationFrame(()=>{ setTimeout(()=>{
+      let url=null; try{ url=cv.toDataURL('image/png'); }catch(_){}
+      try{ ch.destroy(); }catch(_){}
+      document.body.removeChild(cv);
+      resolve(url);
+    },60); });
+  });
+}
+
+async function exportarExcel(){
+  if(typeof ExcelJS==='undefined'){ alert('La librería de Excel no cargó. Revisá tu conexión.'); return; }
+  const btn=document.getElementById('btnExportar'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Generando…';
+  try{
+    const rango=leerRango('d');
+    const M=calcularMetricas(rango);
+    const wb=new ExcelJS.Workbook();
+    wb.creator='Buzón B&C'; wb.created=new Date();
+    const AZUL='FF0B3D66', AZUL2='FF1A6AA8', SOFT='FFE8F1F8', BLANCO='FFFFFFFF';
+
+    const tituloFila=(ws,texto,col)=>{
+      ws.mergeCells(1,1,1,col);
+      const c=ws.getCell('A1'); c.value=texto;
+      c.font={bold:true,size:15,color:{argb:BLANCO}};
+      c.fill={type:'pattern',pattern:'solid',fgColor:{argb:AZUL}};
+      c.alignment={vertical:'middle',horizontal:'left',indent:1};
+      ws.getRow(1).height=28;
+    };
+    const headerRow=(ws,row)=>{ row.eachCell(c=>{
+      c.font={bold:true,color:{argb:BLANCO}}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:AZUL2}};
+      c.alignment={vertical:'middle',horizontal:'center'};
+      c.border={bottom:{style:'thin',color:{argb:AZUL}}};
+    }); row.height=20; };
+
+    /* ---- Hoja 1: Resumen / KPIs ---- */
+    const r=wb.addWorksheet('Resumen',{views:[{showGridLines:false}]});
+    r.columns=[{width:34},{width:18},{width:18},{width:18}];
+    tituloFila(r,'Buzón de Quejas y Sugerencias · Resumen',4);
+    r.getCell('A2').value='Período'; r.getCell('B2').value=rangoTexto(rango);
+    r.getCell('A3').value='Generado'; r.getCell('B3').value=new Date();
+    r.getCell('B3').numFmt='dd/mm/yyyy hh:mm';
+    r.getCell('A2').font={bold:true}; r.getCell('A3').font={bold:true};
+    let row=5;
+    const kpis=[
+      ['Total de mensajes',M.total],['Nuevos',M.porEstado['Nuevo']||0],
+      ['En proceso',M.porEstado['En proceso']||0],['Resueltos',M.porEstado['Resuelto']||0],
+      ['Cerrados',M.porEstado['Cerrado']||0],
+      ['Tasa de reapertura',(M.tasaReapertura.toFixed(1))+'%'],
+      ['% cerrados automáticamente',(M.pctCerradoAuto.toFixed(1))+'%'],
+      ['Primera respuesta (prom.)',M.horasFmt(M.primerRespProm)],
+      ['Tiempo de resolución (prom.)',M.horasFmt(M.resolucionProm)],
+    ];
+    const hk=r.getRow(row); hk.getCell(1).value='Indicador'; hk.getCell(2).value='Valor'; headerRow(hk); row++;
+    kpis.forEach((k,i)=>{ const rr=r.getRow(row);
+      rr.getCell(1).value=k[0]; rr.getCell(2).value=k[1];
+      if(i%2===0) rr.eachCell(c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:SOFT}};});
+      rr.getCell(2).alignment={horizontal:'center'}; row++; });
+
+    /* ---- Hoja 2: Mensajes (detalle) ---- */
+    const d=wb.addWorksheet('Mensajes',{views:[{showGridLines:false,state:'frozen',ySplit:3}]});
+    d.columns=[{width:16},{width:13},{width:20},{width:13},{width:50},{width:18},{width:22},{width:13}];
+    tituloFila(d,'Detalle de mensajes',8);
+    const hd=d.getRow(3);
+    ['Código','Tipo','Área','Estado','Mensaje','Fecha','Nombre','Contacto'].forEach((t,i)=>hd.getCell(i+1).value=t);
+    headerRow(hd);
+    let dr=4;
+    TODOS.filter(m=>!m.archivado && enRango(m, rango)).forEach((m,i)=>{
+      const rr=d.getRow(dr);
+      rr.getCell(1).value=m.codigo; rr.getCell(2).value=m.tipo; rr.getCell(3).value=m.area||'—';
+      rr.getCell(4).value=m.estado+((m.estado==='Cerrado'&&m.cerradoAuto)?' (auto)':'');
+      rr.getCell(5).value=m.mensaje;
+      rr.getCell(6).value=toDate(m.creado); rr.getCell(6).numFmt='dd/mm/yyyy';
+      rr.getCell(7).value=m.nombre||'Anónimo'; rr.getCell(8).value=m.contacto||'—';
+      rr.getCell(5).alignment={wrapText:true,vertical:'top'};
+      if(i%2===0) rr.eachCell(c=>{ if(!c.fill||!c.fill.fgColor) c.fill={type:'pattern',pattern:'solid',fgColor:{argb:SOFT}};});
+      dr++;
+    });
+    d.autoFilter={from:{row:3,column:1},to:{row:3,column:8}};
+
+    /* ---- Hojas de datos para gráficos (tabla + imagen del gráfico) ---- */
+    // Generamos imágenes PNG de los gráficos al vuelo en un canvas oculto,
+    // así funciona aunque el usuario no haya abierto la pestaña Dashboard.
+    const imgEstado = await graficoPNG('doughnut', ESTADOS_ORD, ESTADOS_ORD.map(e=>M.porEstado[e]||0),
+      'Por estado', [COL.azul2,COL.ambar,COL.verde,COL.gris]);
+    const imgTipo = await graficoPNG('bar', TIPOS_ORD, TIPOS_ORD.map(t=>M.porTipo[t]||0),
+      'Por tipo', COL.azul);
+    const areasK = Object.keys(M.porArea).sort((a,b)=>M.porArea[b]-M.porArea[a]);
+    const imgArea = await graficoPNG('bar', areasK, areasK.map(a=>M.porArea[a]),
+      'Por área', COL.azul2, true);
+    const mesesK = Object.keys(M.porMes).sort();
+    const imgMes = await graficoPNG('line', mesesK, mesesK.map(k=>M.porMes[k]),
+      'Tendencia mensual', COL.azul);
+
+    const addTablaConGrafico=(nombre, etiqueta, pares, imgData)=>{
+      const ws=wb.addWorksheet(nombre,{views:[{showGridLines:false}]});
+      ws.columns=[{width:26},{width:14}];
+      tituloFila(ws,etiqueta,2);
+      const h=ws.getRow(3); h.getCell(1).value='Categoría'; h.getCell(2).value='Cantidad'; headerRow(h);
+      let rr=4; pares.forEach((p,i)=>{ const row=ws.getRow(rr);
+        row.getCell(1).value=p[0]; row.getCell(2).value=p[1];
+        if(i%2===0) row.eachCell(c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:SOFT}};});
+        rr++; });
+      if(imgData){
+        const id=wb.addImage({base64:imgData.split(',')[1], extension:'png'});
+        ws.addImage(id,{tl:{col:3,row:2},ext:{width:440,height:280}});
+      }
+      return ws;
+    };
+    addTablaConGrafico('PorEstado','Mensajes por estado', ESTADOS_ORD.map(e=>[e,M.porEstado[e]||0]), imgEstado);
+    addTablaConGrafico('PorTipo','Mensajes por tipo', TIPOS_ORD.map(t=>[t,M.porTipo[t]||0]), imgTipo);
+    addTablaConGrafico('PorArea','Mensajes por área', areasK.map(a=>[a,M.porArea[a]]), imgArea);
+    addTablaConGrafico('PorMes','Tendencia mensual', mesesK.map(k=>[k,M.porMes[k]]), imgMes);
+
+    /* ---- En la hoja Resumen, pegar los 4 gráficos como panel visual ---- */
+    const pegar=(img,col,rowAnchor)=>{ if(!img) return;
+      const id=wb.addImage({base64:img.split(',')[1],extension:'png'});
+      r.addImage(id,{tl:{col,row:rowAnchor},ext:{width:380,height:240}}); };
+    pegar(imgEstado, 4, 5);
+    pegar(imgTipo, 10, 5);
+    pegar(imgArea, 4, 18);
+    pegar(imgMes, 10, 18);
+
+    const buf=await wb.xlsx.writeBuffer();
+    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url=URL.createObjectURL(blob); const a=document.createElement('a');
+    const hoy=new Date().toISOString().slice(0,10);
+    a.href=url; a.download='Buzon-ByC-Dashboard-'+hoy+'.xlsx'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+  }catch(e){ console.error(e); alert('No se pudo exportar: '+e.message); }
+  finally{ btn.disabled=false; btn.textContent='⬇️ Exportar a Excel'; }
 }
 
 /* ---------- Editar / archivar tarjeta (admin) ---------- */
