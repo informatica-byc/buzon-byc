@@ -26,6 +26,8 @@
   .wrap{max-width:760px;margin:0 auto;padding:20px}
   .tabs{display:flex;gap:6px;margin:18px 0;flex-wrap:wrap}
   .tabs button.active{background:var(--azul);color:#fff;border-color:var(--azul)}
+  .tabs button[data-v="cv"]{background:var(--ok);color:#fff;border-color:var(--ok)}
+  .tabs button[data-v="cv"].active{background:#177a52;color:#fff;border-color:#177a52}
   .card{background:#fff;border:1px solid var(--linea);border-radius:var(--r);padding:22px;
     box-shadow:var(--sombra);margin-bottom:16px}
   h2.sec{font-size:1.1rem;margin:0 0 4px}
@@ -125,8 +127,29 @@
   .ic-btn{border:1px solid var(--linea);background:#fff;border-radius:8px;padding:5px 8px;cursor:pointer;
     font-size:.85rem;line-height:1}
   .ic-btn:hover{background:var(--errbg);border-color:#f0c8c2}
+  /* ---- CV ---- */
+  .file-drop{border:2px dashed var(--linea);border-radius:12px;padding:28px;text-align:center;
+    cursor:pointer;transition:.18s;background:#fff}
+  .file-drop:hover,.file-drop.over{border-color:var(--azul2);background:var(--azul-soft)}
+  .file-drop .fd-ic{font-size:2rem;display:block;margin-bottom:6px}
+  .file-drop .fd-lbl{font-size:.88rem;color:var(--gris)}
+  .file-drop .fd-file{font-size:.84rem;color:var(--azul);font-weight:700;margin-top:8px;display:none}
+  .file-drop input[type=file]{display:none}
+  .cv-progress{height:8px;border-radius:8px;background:var(--linea);margin-top:10px;overflow:hidden;display:none}
+  .cv-progress-bar{height:100%;width:0;background:var(--azul2);transition:width .3s}
+  .cv-card{border:1px solid var(--linea);border-radius:12px;padding:14px;margin-bottom:10px;background:#fff}
+  .cv-card .cv-h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .cv-card .cv-nombre{font-weight:700;font-size:1rem;color:var(--azul)}
+  .cv-card .cv-meta{font-size:.76rem;color:var(--gris);margin:4px 0}
+  .cv-card .cv-puesto{font-size:.8rem;font-weight:700;color:var(--azul2)}
+  .cv-card .cv-acciones{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+  .pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.73rem;font-weight:700}
+  .pill-nuevo{background:var(--azul-soft);color:var(--azul)}
+  .pill-revision{background:var(--warnbg);color:var(--warn)}
+  .pill-seleccionado{background:var(--okbg);color:var(--ok)}
+  .pill-descartado{background:var(--cerrbg);color:var(--cerr)}
   /* transiciones entre vistas */
-  #v-enviar,#v-seguir,#v-qr,#v-admin{animation:fadeIn .28s ease}
+  #v-enviar,#v-seguir,#v-qr,#v-cv,#v-admin{animation:fadeIn .28s ease}
   @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
   .tabs button{flex:1;min-width:130px;border:1px solid var(--linea);background:#fff;color:var(--gris);
     padding:11px 8px;border-radius:10px;font-size:.86rem;font-weight:600;cursor:pointer;
@@ -189,8 +212,9 @@
   <div id="cfgWarn" class="config-warn"></div>
 
   <div class="tabs">
-    <button data-v="enviar" class="active" onclick="vista('enviar')">📝 Enviar</button>
-    <button data-v="seguir" onclick="vista('seguir')">🔎 Dar seguimiento</button>
+    <button data-v="enviar" class="active" onclick="vista('enviar')">📝 Queja o Sugerencia</button>
+    <button data-v="seguir" onclick="vista('seguir')">🔎 Seguimiento de QS</button>
+    <button data-v="cv" onclick="vista('cv')" style="background:var(--ok);color:#fff;border-color:var(--ok);font-weight:800">📄 Enviar CV</button>
     <button data-v="qr" onclick="vista('qr')">📱 Código QR</button>
     <button data-v="admin" onclick="vista('admin')">🔐 RRHH / Admin</button>
   </div>
@@ -218,7 +242,8 @@
       <option>Mantenimiento</option>
       <option>Calidad</option>
       <option>Recursos Humanos</option>
-      <option>Administración / Finanzas</option>
+      <option>Administración</option>
+      <option>Finanzas</option>
       <option>Sistemas / TI</option>
       <option>Transporte</option>
       <option>Otro</option>
@@ -263,16 +288,106 @@
     <div id="segResult"></div>
   </section>
 
+  <!-- CV -->
+  <section id="v-cv" class="card" style="display:none">
+    <h2 class="sec">Enviar tu hoja de vida</h2>
+    <p class="sub">Adjuntá tu CV en PDF o Word. Llegará directamente al equipo de Recursos Humanos.
+      Te damos un código de confirmación para que sepas que fue recibido.</p>
+
+    <div class="row2">
+      <div>
+        <label>Nombre completo <span class="req">*</span></label>
+        <input id="cvNombre" placeholder="Tu nombre y apellidos">
+      </div>
+      <div>
+        <label>Cédula / Identificación</label>
+        <input id="cvCedula" placeholder="Ej: 1-2345-6789">
+      </div>
+    </div>
+
+    <div class="row2">
+      <div>
+        <label>Correo electrónico <span class="req">*</span></label>
+        <input id="cvCorreo" type="email" placeholder="tu@correo.com">
+      </div>
+      <div>
+        <label>Teléfono</label>
+        <input id="cvTelefono" placeholder="Ej: 8888-8888">
+      </div>
+    </div>
+
+    <label>Puesto de interés <span class="req">*</span></label>
+    <select id="cvPuesto">
+      <option value="">— Seleccioná el área —</option>
+      <option>Producción / Planta</option>
+      <option>Empaque</option>
+      <option>Bodega / Logística</option>
+      <option>Mantenimiento</option>
+      <option>Calidad</option>
+      <option>Administración</option>
+      <option>Finanzas</option>
+      <option>Recursos Humanos</option>
+      <option>Transporte</option>
+      <option>Sistemas / TI</option>
+      <option>Otro / Abierto a oportunidades</option>
+    </select>
+
+    <label>Mensaje adicional (opcional)</label>
+    <textarea id="cvMensaje" style="min-height:80px"
+      placeholder="Podés incluir disponibilidad, experiencia relevante, expectativa salarial, etc."></textarea>
+
+    <label>Adjuntá tu CV <span class="req">*</span></label>
+    <div class="file-drop" id="cvDrop" onclick="document.getElementById('cvFile').click()"
+      ondragover="cvDragOver(event)" ondragleave="cvDragLeave(event)" ondrop="cvDropped(event)">
+      <span class="fd-ic">📎</span>
+      <div class="fd-lbl">Hacé clic o arrastrá tu archivo aquí</div>
+      <div class="fd-lbl" style="margin-top:4px">PDF, DOC o DOCX · Máximo 5 MB</div>
+      <div class="fd-file" id="cvFileName"></div>
+      <input type="file" id="cvFile" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        onchange="cvArchivoSeleccionado(this.files[0])">
+    </div>
+    <div class="cv-progress" id="cvProgress"><div class="cv-progress-bar" id="cvProgressBar"></div></div>
+    <div class="hint">Tu archivo se almacena de forma segura. Solo RRHH tiene acceso a descargarlo.</div>
+
+    <button class="btn" id="btnCVEnviar" onclick="enviarCV()">Enviar CV</button>
+    <div id="okCV" class="alert ok"></div>
+    <div id="errCV" class="alert err"></div>
+
+    <div id="cvCodeResult" class="codebox" style="display:none">
+      <div class="lbl">Tu código de confirmación</div>
+      <div class="code" id="cvCodeVal">—</div>
+      <p class="sub" style="margin:0">Guardá este código. Con él podés confirmar que tu CV fue recibido.</p>
+      <button onclick="copiarCodigoCV()">📋 Copiar código</button>
+    </div>
+  </section>
+
   <!-- QR -->
   <section id="v-qr" class="card" style="display:none">
-    <h2 class="sec">Código QR para colaboradores</h2>
-    <p class="sub">Imprimí este código y pegalo en la pizarra informativa o en las áreas.
-      Cualquier colaborador lo escanea con su celular y llega directo al formulario.</p>
-    <div class="qr-area">
-      <div id="qrcode"></div>
-      <div class="qr-url" id="qrUrl"></div>
-      <button class="btn ghost" style="max-width:240px;margin:16px auto 0" onclick="window.print()">🖨️ Imprimir QR</button>
+    <h2 class="sec">Códigos QR para colaboradores</h2>
+    <p class="sub">Imprimí estos códigos y pegálos en la pizarra informativa o en las áreas.
+      Cualquier colaborador los escanea con su celular y llega directo al formulario correspondiente.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:10px">
+      <!-- QR Buzón -->
+      <div style="border:1px solid var(--linea);border-radius:14px;padding:20px;text-align:center">
+        <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--azul);margin-bottom:10px">📝 Quejas y Sugerencias</div>
+        <div class="qr-area" style="padding:0">
+          <div id="qrcode" style="display:inline-block;padding:12px;background:#fff;border:1px solid var(--linea);border-radius:12px"></div>
+          <div class="qr-url" id="qrUrl" style="font-size:.72rem;margin-top:8px"></div>
+        </div>
+      </div>
+      <!-- QR CV -->
+      <div style="border:2px solid var(--ok);border-radius:14px;padding:20px;text-align:center;background:var(--okbg)">
+        <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ok);margin-bottom:10px">📄 Enviar CV</div>
+        <div class="qr-area" style="padding:0">
+          <div id="qrcodeCV" style="display:inline-block;padding:12px;background:#fff;border:1px solid #bfe6d4;border-radius:12px"></div>
+          <div class="qr-url" id="qrUrlCV" style="font-size:.72rem;margin-top:8px"></div>
+        </div>
+      </div>
     </div>
+
+    <button class="btn ghost" style="max-width:240px;margin:18px auto 0;display:block" onclick="window.print()">🖨️ Imprimir QRs</button>
+    <p style="font-size:.75rem;color:var(--gris);text-align:center;margin-top:8px">Al imprimir, ambos códigos aparecen en la misma hoja.</p>
   </section>
 
   <!-- ADMIN -->
@@ -301,6 +416,7 @@
         </div>
         <div class="subtabs">
           <button id="stMensajes" class="active" onclick="panelVista('mensajes')">📋 Mensajes</button>
+          <button id="stCVs" onclick="panelVista('cvs')">📄 CVs recibidos</button>
           <button id="stDashboard" onclick="panelVista('dashboard')">📊 Dashboard</button>
         </div>
       </div>
@@ -343,6 +459,44 @@
           </div>
         </div>
         <div id="lista"></div>
+      </div>
+
+      <!-- VISTA CVs -->
+      <div id="pv-cvs" style="display:none">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+            <div>
+              <h2 class="sec" style="margin:0">CVs recibidos</h2>
+              <p class="sub" style="margin:0">Hojas de vida enviadas por aspirantes.</p>
+            </div>
+          </div>
+          <div class="filtros" style="margin-top:14px">
+            <select id="cvFEstado" onchange="pintarCVs()">
+              <option value="">Todos los estados</option>
+              <option value="Nuevo">Nuevo</option>
+              <option value="En revisión">En revisión</option>
+              <option value="Seleccionado">Seleccionado</option>
+              <option value="Descartado">Descartado</option>
+            </select>
+            <select id="cvFPuesto" onchange="pintarCVs()">
+              <option value="">Todos los puestos</option>
+              <option>Producción / Planta</option>
+              <option>Empaque</option>
+              <option>Bodega / Logística</option>
+              <option>Mantenimiento</option>
+              <option>Calidad</option>
+              <option>Administración</option>
+              <option>Finanzas</option>
+              <option>Recursos Humanos</option>
+              <option>Transporte</option>
+              <option>Sistemas / TI</option>
+              <option>Otro / Abierto a oportunidades</option>
+            </select>
+            <input id="cvFBuscar" placeholder="Buscar nombre, código…" oninput="pintarCVs()">
+          </div>
+          <div class="qmeta" id="cvContador" style="margin:6px 0 0 0"></div>
+        </div>
+        <div id="listaCVs"></div>
       </div>
 
       <!-- VISTA DASHBOARD -->
@@ -403,7 +557,7 @@
         <option value="">— Sin área —</option>
         <option>Producción / Planta</option><option>Empaque</option><option>Bodega</option>
         <option>Mantenimiento</option><option>Calidad</option><option>Recursos Humanos</option>
-        <option>Administración / Finanzas</option><option>Sistemas / TI</option><option>Transporte</option><option>Otro</option>
+        <option>Administración</option><option>Finanzas</option><option>Sistemas / TI</option><option>Transporte</option><option>Otro</option>
       </select>
       <label>Mensaje</label>
       <textarea id="meMensaje" style="min-height:100px"></textarea>
@@ -491,7 +645,9 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <!-- QR -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
@@ -510,12 +666,13 @@ const firebaseConfig = {
   appId: "1:137761653790:web:276426fe859af4876f5a0f"
 };
 
-let db=null, auth=null, fns=null, configOk=false;
+let db=null, auth=null, fns=null, storage=null, configOk=false;
 try{
   if(firebaseConfig.apiKey!=="TU_API_KEY"){
     firebase.initializeApp(firebaseConfig);
     db=firebase.firestore(); auth=firebase.auth();
     try{ fns=firebase.functions(); }catch(_){ fns=null; }
+    try{ storage=firebase.storage(); }catch(_){ storage=null; }
     configOk=true;
   }
 }catch(e){ console.error(e); }
@@ -529,7 +686,7 @@ if(!configOk){
 
 /* ---------- Navegación ---------- */
 function vista(v){
-  ['enviar','seguir','qr','admin'].forEach(x=>{
+  ['enviar','seguir','cv','qr','admin'].forEach(x=>{
     const el=document.getElementById('v-'+x);
     el.style.display = x===v?'block':'none';
     document.querySelector(`.tabs button[data-v="${x}"]`).classList.toggle('active',x===v);
@@ -544,10 +701,16 @@ function vista(v){
 let qrDone=false;
 function pintarQR(){
   if(qrDone) return;
-  const url=location.origin+location.pathname;
-  document.getElementById('qrUrl').textContent=url;
-  new QRCode(document.getElementById('qrcode'),{text:url,width:200,height:200,
+  const base=location.origin+location.pathname;
+  // QR buzón (raíz)
+  document.getElementById('qrUrl').textContent=base;
+  new QRCode(document.getElementById('qrcode'),{text:base,width:180,height:180,
     colorDark:"#0B3D66",colorLight:"#ffffff"});
+  // QR CV (con hash para abrir directo la pestaña CV)
+  const urlCV=base+'?tab=cv';
+  document.getElementById('qrUrlCV').textContent=urlCV;
+  new QRCode(document.getElementById('qrcodeCV'),{text:urlCV,width:180,height:180,
+    colorDark:"#1f9d6b",colorLight:"#ffffff"});
   qrDone=true;
 }
 
@@ -762,7 +925,8 @@ if(configOk){
       document.getElementById('email').value=''; document.getElementById('pass').value='';
       document.getElementById('errLogin').classList.remove('show');
       if(unsub){ unsub(); unsub=null; }
-      TODOS=[];
+      if(unsubCVs){ unsubCVs(); unsubCVs=null; }
+      TODOS=[]; TODOS_CVS=[];
       hideOverlay();
     }
   });
@@ -955,10 +1119,13 @@ let panelActual='mensajes';
 function panelVista(v){
   panelActual=v;
   document.getElementById('pv-mensajes').style.display = v==='mensajes'?'block':'none';
+  document.getElementById('pv-cvs').style.display     = v==='cvs'?'block':'none';
   document.getElementById('pv-dashboard').style.display = v==='dashboard'?'block':'none';
   document.getElementById('stMensajes').classList.toggle('active', v==='mensajes');
+  document.getElementById('stCVs').classList.toggle('active', v==='cvs');
   document.getElementById('stDashboard').classList.toggle('active', v==='dashboard');
   if(v==='dashboard') prepararDashboard();
+  if(v==='cvs' && !unsubCVs) escucharCVs();
 }
 
 async function prepararDashboard(){
@@ -1458,14 +1625,271 @@ async function crearUsuario(){
   }
 }
 
+/* ============================================================
+   MÓDULO CVs — Envío público + Panel admin
+   ============================================================ */
+
+/* ----- Drag & Drop helpers ----- */
+let CV_ARCHIVO = null;
+function cvArchivoSeleccionado(f){
+  if(!f) return;
+  const MB = f.size / 1024 / 1024;
+  const ext = f.name.split('.').pop().toLowerCase();
+  const errCV = document.getElementById('errCV');
+  errCV.classList.remove('show');
+  if(!['pdf','doc','docx'].includes(ext)){
+    errCV.textContent = 'Solo se aceptan archivos PDF, DOC o DOCX.'; errCV.classList.add('show'); return;
+  }
+  if(MB > 5){
+    errCV.textContent = 'El archivo supera el límite de 5 MB.'; errCV.classList.add('show'); return;
+  }
+  CV_ARCHIVO = f;
+  const fn = document.getElementById('cvFileName');
+  fn.textContent = '✅ ' + f.name + ' (' + MB.toFixed(2) + ' MB)';
+  fn.style.display = 'block';
+}
+function cvDragOver(e){ e.preventDefault(); document.getElementById('cvDrop').classList.add('over'); }
+function cvDragLeave(){ document.getElementById('cvDrop').classList.remove('over'); }
+function cvDropped(e){
+  e.preventDefault(); cvDragLeave();
+  const f = e.dataTransfer.files[0];
+  if(f){ document.getElementById('cvFile').files; cvArchivoSeleccionado(f); }
+}
+function copiarCodigoCV(){
+  const c = document.getElementById('cvCodeVal').textContent;
+  navigator.clipboard.writeText(c).then(()=>{ const b=event.target; const t=b.textContent;
+    b.textContent='✓ Copiado'; setTimeout(()=>b.textContent=t,1500); });
+}
+
+/* ----- Enviar CV (público) ----- */
+async function enviarCV(){
+  const okCV = document.getElementById('okCV'), errCV = document.getElementById('errCV');
+  okCV.classList.remove('show'); errCV.classList.remove('show');
+
+  const nombre  = document.getElementById('cvNombre').value.trim();
+  const cedula  = document.getElementById('cvCedula').value.trim();
+  const correo  = document.getElementById('cvCorreo').value.trim();
+  const telefono= document.getElementById('cvTelefono').value.trim();
+  const puesto  = document.getElementById('cvPuesto').value;
+  const mensaje = document.getElementById('cvMensaje').value.trim();
+
+  if(!nombre){ errCV.textContent='Ingresá tu nombre completo.'; errCV.classList.add('show'); return; }
+  if(!correo || !/\S+@\S+\.\S+/.test(correo)){ errCV.textContent='Ingresá un correo válido.'; errCV.classList.add('show'); return; }
+  if(!puesto){ errCV.textContent='Seleccioná el puesto de interés.'; errCV.classList.add('show'); return; }
+  if(!CV_ARCHIVO){ errCV.textContent='Adjuntá tu CV en PDF o Word.'; errCV.classList.add('show'); return; }
+  if(!configOk){ errCV.textContent='Firebase no está configurado.'; errCV.classList.add('show'); return; }
+  if(!storage){ errCV.textContent='El módulo de almacenamiento no está disponible.'; errCV.classList.add('show'); return; }
+
+  const btn = document.getElementById('btnCVEnviar');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Subiendo archivo…';
+
+  const progress = document.getElementById('cvProgress');
+  const bar = document.getElementById('cvProgressBar');
+  progress.style.display = 'block'; bar.style.width = '0%';
+
+  try{
+    // Consecutivo CV
+    const year = new Date().getFullYear();
+    const cvCounter = db.collection('contadores').doc('cv_'+year);
+    let consec;
+    await db.runTransaction(async t=>{
+      const snap = await t.get(cvCounter);
+      consec = (snap.exists ? (snap.data().n||0) : 0) + 1;
+      t.set(cvCounter, {n:consec}, {merge:true});
+    });
+    const codigo = `CV-${year}-${pad(consec)}`;
+
+    // Subir a Storage
+    const ext = CV_ARCHIVO.name.split('.').pop().toLowerCase();
+    const path = `cvs/${year}/${codigo}_${nombre.replace(/\s+/g,'_')}.${ext}`;
+    const ref = storage.ref(path);
+    const uploadTask = ref.put(CV_ARCHIVO);
+
+    await new Promise((resolve, reject)=>{
+      uploadTask.on('state_changed',
+        snap=>{ bar.style.width = (snap.bytesTransferred/snap.totalBytes*100).toFixed(0)+'%'; },
+        reject,
+        resolve
+      );
+    });
+    const downloadURL = await ref.getDownloadURL();
+
+    // Guardar en Firestore
+    await db.collection('cvs').doc(codigo).set({
+      codigo, nombre, cedula:cedula||null, correo, telefono:telefono||null,
+      puesto, mensaje:mensaje||null,
+      archivoNombre: CV_ARCHIVO.name, archivoURL: downloadURL, archivoPath: path,
+      estado: 'Nuevo',
+      creado: firebase.firestore.FieldValue.serverTimestamp(),
+      actualizado: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Notificación email vía EmailJS
+    try{
+      await emailjs.send(
+        EMAILJS_CONFIG.serviceId,
+        EMAILJS_CONFIG.templateId,
+        {
+          cv_codigo:      codigo,
+          cv_nombre:      nombre,
+          cv_correo:      correo,
+          cv_telefono:    telefono || '—',
+          cv_cedula:      cedula   || '—',
+          cv_puesto:      puesto,
+          cv_mensaje:     mensaje  || '(sin mensaje adicional)',
+          cv_archivo:     CV_ARCHIVO.name,
+          cv_url:         downloadURL,
+          panel_url:      'https://informatica-byc.github.io/buzon-byc/'
+        },
+        EMAILJS_CONFIG.publicKey
+      );
+    }catch(emailErr){ console.warn('EmailJS CV:', emailErr); }
+
+    // UI éxito
+    bar.style.width = '100%';
+    document.getElementById('cvCodeVal').textContent = codigo;
+    document.getElementById('cvCodeResult').style.display = 'block';
+    okCV.textContent = '✅ Tu CV fue enviado correctamente. Guardá tu código de confirmación.';
+    okCV.classList.add('show');
+    // Limpiar formulario
+    ['cvNombre','cvCedula','cvCorreo','cvTelefono','cvMensaje'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('cvPuesto').value='';
+    CV_ARCHIVO = null;
+    document.getElementById('cvFileName').style.display='none';
+    document.getElementById('cvFileName').textContent='';
+    document.getElementById('cvFile').value='';
+    document.getElementById('cvCodeResult').scrollIntoView({behavior:'smooth'});
+
+  }catch(e){
+    console.error(e); errCV.textContent = 'No se pudo enviar: '+e.message; errCV.classList.add('show');
+  }finally{
+    btn.disabled=false; btn.textContent='Enviar CV';
+    setTimeout(()=>{ progress.style.display='none'; bar.style.width='0%'; },1500);
+  }
+}
+
+/* ----- Panel admin — CVs ----- */
+let TODOS_CVS = [], unsubCVs = null;
+
+const CV_ESTADO_CLASE = {
+  'Nuevo':'pill-nuevo','En revisión':'pill-revision',
+  'Seleccionado':'pill-seleccionado','Descartado':'pill-descartado'
+};
+const CV_ESTADOS = ['Nuevo','En revisión','Seleccionado','Descartado'];
+
+function escucharCVs(){
+  if(unsubCVs) unsubCVs();
+  unsubCVs = db.collection('cvs').orderBy('creado','desc').onSnapshot(snap=>{
+    TODOS_CVS = snap.docs.map(d=>d.data());
+    pintarCVs();
+  }, err=>{ document.getElementById('listaCVs').innerHTML='<div class="muted">Error: '+err.message+'</div>'; });
+}
+
+function pintarCVs(){
+  const fe = document.getElementById('cvFEstado').value;
+  const fp = document.getElementById('cvFPuesto').value;
+  const fb = document.getElementById('cvFBuscar').value.trim().toLowerCase();
+  let arr = TODOS_CVS.filter(cv=>{
+    if(fe && cv.estado!==fe) return false;
+    if(fp && cv.puesto!==fp) return false;
+    if(fb && !(cv.nombre||'').toLowerCase().includes(fb) && !(cv.codigo||'').toLowerCase().includes(fb) && !(cv.correo||'').toLowerCase().includes(fb)) return false;
+    return true;
+  });
+  document.getElementById('cvContador').textContent = arr.length + ' CV(s)';
+  const L = document.getElementById('listaCVs');
+  if(!arr.length){ L.innerHTML='<div class="card muted">No hay CVs con esos filtros.</div>'; return; }
+  L.innerHTML = arr.map(cv=>`
+    <div class="cv-card">
+      <div class="cv-h">
+        <div>
+          <div class="cv-nombre">${escHtml(cv.nombre)}</div>
+          <div class="cv-puesto">${escHtml(cv.puesto)}</div>
+        </div>
+        <span class="pill ${CV_ESTADO_CLASE[cv.estado]||'pill-nuevo'}">${cv.estado}</span>
+      </div>
+      <div class="cv-meta">
+        ${cv.codigo} · ${fechaTxt(cv.creado)}
+        ${cv.correo?' · ✉️ <a href="mailto:'+escHtml(cv.correo)+'">'+escHtml(cv.correo)+'</a>':''}
+        ${cv.telefono?' · 📞 '+escHtml(cv.telefono):''}
+        ${cv.cedula?' · 🪪 '+escHtml(cv.cedula):''}
+      </div>
+      ${cv.mensaje?`<div class="qtxt" style="font-size:.85rem;margin:6px 0">${escHtml(cv.mensaje)}</div>`:''}
+      <div class="cv-acciones">
+        <a href="${escHtml(cv.archivoURL)}" target="_blank" rel="noopener"
+          class="btn-admin" style="text-decoration:none">📥 Descargar CV</a>
+        <select onchange="cambiarEstadoCV('${cv.codigo}',this.value)" style="width:auto;padding:6px 10px;font-size:.82rem">
+          ${CV_ESTADOS.map(s=>`<option ${s===cv.estado?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    </div>`).join('');
+}
+
+async function cambiarEstadoCV(codigo, estado){
+  try{
+    const email = auth.currentUser ? auth.currentUser.email : null;
+    await db.collection('cvs').doc(codigo).update({
+      estado, actualizado: firebase.firestore.FieldValue.serverTimestamp(),
+      actualizadoPor: email
+    });
+  }catch(e){ alert('No se pudo actualizar: '+e.message); }
+}
+
+/* ============================================================
+   EMAILJS — Notificación automática al recibir un CV
+   ============================================================
+   Pasos para activar (1 sola vez, gratis hasta 200 emails/mes):
+
+   1. Creá cuenta en https://www.emailjs.com
+   2. Email Services → Add Service → Microsoft 365
+      Autenticá con reclutamientorh@bycexportadores.com
+      Anotá el Service ID (ej: service_abc123)
+   3. Email Templates → Create Template
+      Pegá el cuerpo de abajo como plantilla HTML.
+      Anotá el Template ID (ej: template_xyz789)
+   4. Account → Public Key  (ej: aBcDeFgHiJkLmNoP)
+   5. Reemplazá los tres valores en EMAILJS_CONFIG abajo.
+
+   ── Plantilla sugerida (pegar en EmailJS Template Editor) ──
+   Subject: [CV Recibido] {{cv_nombre}} — {{cv_puesto}}
+   To email: reclutamientorh@bycexportadores.com
+
+   <h2 style="color:#0B3D66">Nuevo CV recibido · B&C Exportadores</h2>
+   <table>
+     <tr><td><b>Código</b></td><td>{{cv_codigo}}</td></tr>
+     <tr><td><b>Nombre</b></td><td>{{cv_nombre}}</td></tr>
+     <tr><td><b>Cédula</b></td><td>{{cv_cedula}}</td></tr>
+     <tr><td><b>Correo</b></td><td>{{cv_correo}}</td></tr>
+     <tr><td><b>Teléfono</b></td><td>{{cv_telefono}}</td></tr>
+     <tr><td><b>Puesto de interés</b></td><td>{{cv_puesto}}</td></tr>
+     <tr><td><b>Archivo</b></td><td>{{cv_archivo}}</td></tr>
+     <tr><td><b>Mensaje</b></td><td>{{cv_mensaje}}</td></tr>
+   </table>
+   <p><a href="{{cv_url}}">📥 Descargar CV</a></p>
+   <p><a href="{{panel_url}}">🔐 Abrir panel RRHH</a></p>
+   ============================================================ */
+
+const EMAILJS_CONFIG = {
+  serviceId:  'service_a3r2r1j',
+  templateId: 'template_f3zx62u',
+  publicKey:  'oZzwz0qvILNm9QMXG'
+};
+
+// Inicializar EmailJS
+if(EMAILJS_CONFIG.publicKey !== 'REEMPLAZAR_PUBLIC_KEY'){
+  emailjs.init({ publicKey: EMAILJS_CONFIG.publicKey });
+}
+
+/* ============================================================ */
+
 /* cerrar modal al hacer clic en el fondo oscuro (no en el contenido) */
 document.querySelectorAll('.modal-bg').forEach(bg=>{
   bg.addEventListener('click',ev=>{ if(ev.target===bg) bg.classList.remove('show'); });
 });
 
-/* deep-link ?seguir=CODIGO */
+/* deep-link ?seguir=CODIGO o ?tab=cv */
 const qs=new URLSearchParams(location.search);
 if(qs.get('seguir')){ vista('seguir'); document.getElementById('codigoBuscar').value=qs.get('seguir'); buscar(); }
+else if(qs.get('tab')==='cv'){ vista('cv'); }
 </script>
 </body>
 </html>
