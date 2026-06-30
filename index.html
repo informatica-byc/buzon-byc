@@ -375,20 +375,10 @@
     <p class="hint" style="margin-top:-4px">Indicá hasta tres referencias.</p>
     <div id="referencias"></div>
 
-    <!-- Adjuntar CV (opcional) -->
-    <h3 class="sec-grupo">📎 Adjuntar CV (opcional)</h3>
-    <div class="file-drop" id="cvDrop" onclick="document.getElementById('cvFile').click()"
-      ondragover="cvDragOver(event)" ondragleave="cvDragLeave(event)" ondrop="cvDropped(event)">
-      <span class="fd-ic">📎</span>
-      <div class="fd-lbl">Hacé clic o arrastrá tu archivo aquí</div>
-      <div class="fd-lbl" style="margin-top:4px">PDF, DOC o DOCX · Máximo 5 MB</div>
-      <div class="fd-file" id="cvFileName"></div>
-      <input type="file" id="cvFile" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        onchange="cvArchivoSeleccionado(this.files[0])">
-    </div>
+    <!-- Generación del Word -->
+    <div class="hint" style="margin-top:18px">Al enviar, tu solicitud se genera en <b>Word</b> automáticamente:
+      se descarga en tu dispositivo y se envía a Recursos Humanos. No necesitás adjuntar nada más.</div>
     <div class="cv-progress" id="cvProgress"><div class="cv-progress-bar" id="cvProgressBar"></div></div>
-    <div class="hint">Tu solicitud se genera en Word automáticamente. El CV adjunto es opcional.
-      Todo se almacena de forma segura; solo RRHH tiene acceso.</div>
 
     <button class="btn" id="btnCVEnviar" onclick="enviarCV()">Enviar solicitud</button>
     <div id="okCV" class="alert ok"></div>
@@ -686,7 +676,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <!-- QR -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
@@ -708,13 +697,12 @@ const firebaseConfig = {
   appId: "1:137761653790:web:276426fe859af4876f5a0f"
 };
 
-let db=null, auth=null, fns=null, storage=null, configOk=false;
+let db=null, auth=null, fns=null, configOk=false;
 try{
   if(firebaseConfig.apiKey!=="TU_API_KEY"){
     firebase.initializeApp(firebaseConfig);
     db=firebase.firestore(); auth=firebase.auth();
     try{ fns=firebase.functions(); }catch(_){ fns=null; }
-    try{ storage=firebase.storage(); }catch(_){ storage=null; }
     configOk=true;
   }
 }catch(e){ console.error(e); }
@@ -1672,24 +1660,6 @@ async function crearUsuario(){
    ============================================================ */
 
 /* ----- Drag & Drop helpers ----- */
-let CV_ARCHIVO = null;
-function cvArchivoSeleccionado(f){
-  if(!f) return;
-  const MB = f.size / 1024 / 1024;
-  const ext = f.name.split('.').pop().toLowerCase();
-  const errCV = document.getElementById('errCV');
-  errCV.classList.remove('show');
-  if(!['pdf','doc','docx'].includes(ext)){
-    errCV.textContent = 'Solo se aceptan archivos PDF, DOC o DOCX.'; errCV.classList.add('show'); return;
-  }
-  if(MB > 5){
-    errCV.textContent = 'El archivo supera el límite de 5 MB.'; errCV.classList.add('show'); return;
-  }
-  CV_ARCHIVO = f;
-  const fn = document.getElementById('cvFileName');
-  fn.textContent = '✅ ' + f.name + ' (' + MB.toFixed(2) + ' MB)';
-  fn.style.display = 'block';
-}
 /* ----- Solicitud de empleo: bloques dinámicos de empleos y referencias ----- */
 const COLS_EMPLEO = [
   ['compania','Nombre de la compañía'],['entrada','Fecha de entrada'],
@@ -1868,14 +1838,6 @@ function generarWordSolicitud(d){
   return Packer.toBlob(doc);
 }
 
-/* ----- file-drop CV (opcional) ----- */
-function cvDragOver(e){ e.preventDefault(); document.getElementById('cvDrop').classList.add('over'); }
-function cvDragLeave(){ document.getElementById('cvDrop').classList.remove('over'); }
-function cvDropped(e){
-  e.preventDefault(); cvDragLeave();
-  const f = e.dataTransfer.files[0];
-  if(f){ cvArchivoSeleccionado(f); }
-}
 function copiarCodigoCV(){
   const c = document.getElementById('cvCodeVal').textContent;
   navigator.clipboard.writeText(c).then(()=>{ const b=event.target; const t=b.textContent;
@@ -1905,7 +1867,6 @@ async function enviarCV(){
   if(!d.correo || !/\S+@\S+\.\S+/.test(d.correo)){ errCV.textContent='Ingresá un correo válido.'; errCV.classList.add('show'); return; }
   if(!d.celular){ errCV.textContent='Ingresá tu número de celular.'; errCV.classList.add('show'); return; }
   if(!configOk){ errCV.textContent='Firebase no está configurado.'; errCV.classList.add('show'); return; }
-  if(!storage){ errCV.textContent='El módulo de almacenamiento no está disponible.'; errCV.classList.add('show'); return; }
   if(typeof docx==='undefined'){ errCV.textContent='No se pudo cargar el generador de Word. Revisá tu conexión.'; errCV.classList.add('show'); return; }
 
   const btn = document.getElementById('btnCVEnviar');
@@ -1929,35 +1890,20 @@ async function enviarCV(){
     const codigo = `CV-${year}-${pad(consec)}`;
     d.codigo = codigo;
     d.fecha = new Date().toLocaleDateString('es-CR',{day:'2-digit',month:'long',year:'numeric'});
-
     const slug = nombreCompleto.replace(/\s+/g,'_').replace(/[^\w\-]/g,'');
 
-    // 1) Generar el Word de la solicitud
-    bar.style.width='15%';
+    // 1) Generar el Word y descargarlo en el equipo del postulante
+    bar.style.width='30%';
     const wordBlob = await generarWordSolicitud(d);
-    const wordPath = `cvs/${year}/${codigo}_Solicitud_${slug}.docx`;
-    const wordRef = storage.ref(wordPath);
-    await wordRef.put(wordBlob, { contentType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-    const wordURL = await wordRef.getDownloadURL();
-    bar.style.width='55%';
+    const wordNombre = `${codigo}_Solicitud_${slug}.docx`;
+    const urlBlob = URL.createObjectURL(wordBlob);
+    const a = document.createElement('a');
+    a.href = urlBlob; a.download = wordNombre; document.body.appendChild(a);
+    a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(urlBlob), 4000);
+    bar.style.width='60%';
 
-    // 2) Subir el CV adjunto (si lo hay)
-    let archivoURL=null, archivoPath=null, archivoNombre=null;
-    if(CV_ARCHIVO){
-      const ext = CV_ARCHIVO.name.split('.').pop().toLowerCase();
-      archivoPath = `cvs/${year}/${codigo}_CV_${slug}.${ext}`;
-      const ref = storage.ref(archivoPath);
-      await new Promise((resolve,reject)=>{
-        ref.put(CV_ARCHIVO).on('state_changed',
-          snap=>{ bar.style.width = (55 + snap.bytesTransferred/snap.totalBytes*30).toFixed(0)+'%'; },
-          reject, resolve);
-      });
-      archivoURL = await ref.getDownloadURL();
-      archivoNombre = CV_ARCHIVO.name;
-    }
-    bar.style.width='90%';
-
-    // 3) Guardar en Firestore
+    // 2) Guardar todos los datos en Firestore (para el panel de RRHH)
     await db.collection('cvs').doc(codigo).set({
       codigo,
       nombre: nombreCompleto,
@@ -1969,22 +1915,63 @@ async function enviarCV(){
       emergencia:{ nombre:d.emgNombre||null, telefono:d.emgTel||null, parentesco:d.emgParentesco||null },
       escolaridad:d.escolaridad||null, conocimientos:d.conocimientos||null,
       empleos:d.empleos, referencias:d.referencias,
-      solicitudURL: wordURL, solicitudPath: wordPath,
-      archivoNombre, archivoURL, archivoPath,
+      archivoNombre:wordNombre,
       estado:'Nuevo',
       creado: firebase.firestore.FieldValue.serverTimestamp(),
       actualizado: firebase.firestore.FieldValue.serverTimestamp()
     });
+    bar.style.width='80%';
 
-    // 4) Notificación EmailJS
+    // 3) Notificar a RRHH por correo con TODOS los datos en el cuerpo (EmailJS, sin adjunto)
+    const empleosTxt = d.empleos.map((e,i)=>{
+      const campos = [e.compania,e.puesto,e.entrada&&('entrada '+e.entrada),e.salida&&('salida '+e.salida),
+        e.tiempo,e.telefono,e.contacto,e.motivo&&('motivo: '+e.motivo)].filter(Boolean).join(' · ');
+      return campos ? `  ${i+1}. ${campos}` : '';
+    }).filter(Boolean).join('\n') || '  (no indicó)';
+    const refsTxt = d.referencias.map((r,i)=>{
+      const campos=[r.nombre,r.empresa,r.telefono,r.ocupacion,r.relacion].filter(Boolean).join(' · ');
+      return campos ? `  ${i+1}. ${campos}` : '';
+    }).filter(Boolean).join('\n') || '  (no indicó)';
+
+    const cuerpo =
+`SOLICITUD DE EMPLEO — ${codigo}
+Fecha: ${d.fecha}
+
+DATOS PERSONALES
+  Nombre completo: ${nombreCompleto}
+  Cédula: ${d.cedula}
+  Correo: ${d.correo}
+  Celular: ${d.celular}   Tel. casa: ${d.telCasa||'—'}
+  Fecha nacimiento: ${d.nacimiento||'—'}   Estado civil: ${d.estadoCivil||'—'}
+  Licencia conducir: ${d.licencia||'—'}   Manip. alimentos: ${d.manipulacion||'—'}   Hijos: ${d.hijos||'—'}
+  Dirección: ${d.direccion||'—'}
+
+EMERGENCIA
+  Llamar a: ${d.emgNombre||'—'}   Tel: ${d.emgTel||'—'}   Parentesco: ${d.emgParentesco||'—'}
+
+ESCOLARIDAD
+  ${d.escolaridad||'—'}
+
+CONOCIMIENTOS
+  ${d.conocimientos||'—'}
+
+ÚLTIMOS EMPLEOS
+${empleosTxt}
+
+REFERENCIAS
+${refsTxt}
+
+— El postulante también descargó esta solicitud en Word.
+  Podés ver el detalle en el panel RRHH: https://informatica-byc.github.io/buzon-byc/`;
+
     try{
       await emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, {
         cv_codigo:codigo, cv_nombre:nombreCompleto, cv_correo:d.correo,
         cv_telefono:d.celular||'—', cv_cedula:d.cedula||'—',
         cv_puesto:d.empleos[0].puesto||'(solicitud general)',
-        cv_mensaje:'Solicitud de empleo completa adjunta (Word).',
-        cv_archivo:(archivoNombre? archivoNombre+' + ':'')+'Solicitud.docx',
-        cv_url: wordURL,
+        cv_mensaje:cuerpo,
+        cv_archivo:wordNombre,
+        cv_url:'(el postulante descargó el Word; datos completos arriba)',
         panel_url:'https://informatica-byc.github.io/buzon-byc/'
       }, EMAILJS_CONFIG.publicKey);
     }catch(emailErr){ console.warn('EmailJS CV:', emailErr); }
@@ -1993,7 +1980,7 @@ async function enviarCV(){
     bar.style.width='100%';
     document.getElementById('cvCodeVal').textContent = codigo;
     document.getElementById('cvCodeResult').style.display = 'block';
-    okCV.textContent = '✅ Tu solicitud fue enviada y generada en Word. Guardá tu código de confirmación.';
+    okCV.textContent = '✅ Tu solicitud se generó en Word (se descargó en tu dispositivo) y se envió a RRHH. Guardá tu código.';
     okCV.classList.add('show');
 
     // Limpiar
@@ -2002,10 +1989,6 @@ async function enviarCV(){
       .forEach(id=>{ const e=document.getElementById(id); if(e) e.value=''; });
     ['sEstadoCivil','sLicencia','sManipulacion'].forEach(id=>{ const e=document.getElementById(id); if(e) e.value=''; });
     renderEmpleos(); renderReferencias();
-    CV_ARCHIVO=null;
-    document.getElementById('cvFileName').style.display='none';
-    document.getElementById('cvFileName').textContent='';
-    document.getElementById('cvFile').value='';
     document.getElementById('cvCodeResult').scrollIntoView({behavior:'smooth'});
 
   }catch(e){
@@ -2065,16 +2048,35 @@ function pintarCVs(){
         ${cv.cedula?' · 🪪 '+escHtml(cv.cedula):''}
       </div>
       <div class="cv-acciones">
-        ${cv.solicitudURL?`<a href="${escHtml(cv.solicitudURL)}" target="_blank" rel="noopener"
-          class="btn-admin" style="text-decoration:none">📄 Descargar solicitud (Word)</a>`:''}
-        ${cv.archivoURL?`<a href="${escHtml(cv.archivoURL)}" target="_blank" rel="noopener"
-          class="btn-admin" style="text-decoration:none">📎 Descargar CV adjunto</a>`:''}
+        <button class="btn-admin" onclick='regenerarWordCV(${JSON.stringify(cv).replace(/'/g,"&#39;")})'>📄 Descargar solicitud (Word)</button>
         <select onchange="cambiarEstadoCV('${cv.codigo}',this.value)" style="width:auto;padding:6px 10px;font-size:.82rem">
           ${CV_ESTADOS.map(s=>`<option ${s===cv.estado?'selected':''}>${s}</option>`).join('')}
         </select>
       </div>
     </div>`;
   }).join('');
+}
+
+/* RRHH puede regenerar el Word de cualquier solicitud a partir de los datos guardados */
+function regenerarWordCV(cv){
+  if(typeof docx==='undefined'){ alert('No se pudo cargar el generador de Word.'); return; }
+  const d = {
+    codigo:cv.codigo,
+    fecha: cv.creado && cv.creado.toDate ? cv.creado.toDate().toLocaleDateString('es-CR',{day:'2-digit',month:'long',year:'numeric'}) : '',
+    nombre:cv.nombrePila||cv.nombre||'', ap1:cv.apellido1||'', ap2:cv.apellido2||'',
+    cedula:cv.cedula||'', correo:cv.correo||'', nacimiento:cv.nacimiento||'',
+    telCasa:cv.telCasa||'', celular:cv.telefono||'', estadoCivil:cv.estadoCivil||'',
+    licencia:cv.licencia||'', manipulacion:cv.manipulacion||'', hijos:cv.hijos||'',
+    direccion:cv.direccion||'',
+    emgNombre:cv.emergencia?.nombre||'', emgTel:cv.emergencia?.telefono||'', emgParentesco:cv.emergencia?.parentesco||'',
+    escolaridad:cv.escolaridad||'', conocimientos:cv.conocimientos||'',
+    empleos:cv.empleos||[{},{},{}], referencias:cv.referencias||[{},{},{}]
+  };
+  generarWordSolicitud(d).then(blob=>{
+    const url=URL.createObjectURL(blob); const a=document.createElement('a');
+    a.href=url; a.download=(cv.archivoNombre||cv.codigo+'_Solicitud.docx'); document.body.appendChild(a);
+    a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000);
+  }).catch(e=>alert('No se pudo generar: '+e.message));
 }
 
 async function cambiarEstadoCV(codigo, estado){
