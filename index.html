@@ -185,8 +185,8 @@
   .cf-ok{background:var(--ok);color:#fff}
   .cf-no{background:#fff;color:var(--err);border:1px solid #f0c8c2}
   /* sub-navegación del panel */
-  .subtabs{display:flex;gap:6px;margin-top:14px}
-  .subtabs button{flex:1;border:1px solid var(--linea);background:#fff;color:var(--gris);
+  .subtabs{display:flex;gap:6px;margin-top:14px;flex-wrap:wrap}
+  .subtabs button{flex:1 1 auto;min-width:120px;border:1px solid var(--linea);background:#fff;color:var(--gris);
     padding:10px;border-radius:10px;font-size:.88rem;font-weight:600;cursor:pointer;transition:.18s}
   .subtabs button.active{background:var(--azul);color:#fff;border-color:var(--azul)}
   /* filtro de período */
@@ -213,6 +213,55 @@
   .chart-t{font-size:.84rem;font-weight:700;color:var(--tinta);margin-bottom:8px}
   .chart-box canvas{max-height:260px}
   @media(max-width:640px){.chart-grid{grid-template-columns:1fr}.chart-box.chart-wide{grid-column:auto}}
+
+  /* ====== RESPONSIVE: tablet ====== */
+  @media(max-width:820px){
+    .wrap{padding:16px}
+    .row3{grid-template-columns:1fr 1fr}
+    .kpi-grid{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+  }
+
+  /* ====== RESPONSIVE: teléfono ====== */
+  @media(max-width:560px){
+    .wrap{padding:12px}
+    .card{padding:16px;border-radius:14px}
+    h1{font-size:1.15rem}
+    header.top h1 small{font-size:.72rem}
+    /* pestañas principales: 2 por fila, cómodas al tocar */
+    .tabs{gap:8px}
+    .tabs button{min-width:calc(50% - 4px);font-size:.9rem;padding:12px 8px}
+    /* subtabs del panel: 2 por fila */
+    .subtabs button{min-width:calc(50% - 3px)}
+    /* filtros a ancho completo, apilados */
+    .filtros{flex-direction:column;gap:10px}
+    .filtros select,.filtros input{width:100%;flex:none;min-width:0}
+    /* período: etiquetas y fechas apiladas, botones rápidos full width */
+    .periodo{flex-direction:column;align-items:stretch;gap:8px}
+    .periodo label{justify-content:space-between}
+    .periodo input[type=date]{width:100%}
+    .per-quick{margin-left:0;justify-content:space-between}
+    .per-quick button{flex:1 1 auto}
+    /* formularios de 3 columnas a 1 */
+    .row3,.row2{grid-template-columns:1fr}
+    /* KPIs: 2 por fila en móvil */
+    .kpi-grid{grid-template-columns:1fr 1fr;gap:10px}
+    .kpi{padding:12px}
+    .kpi .k-val{font-size:1.4rem}
+    /* acciones de tarjetas CV a ancho completo */
+    .cv-card .cv-acciones{flex-direction:column;align-items:stretch}
+    .cv-card .cv-acciones button,.cv-card .cv-acciones select,.cv-card .cv-acciones a{width:100%}
+    /* botones táctiles más grandes */
+    .btn{padding:14px}
+    input,select,textarea{font-size:16px}  /* evita zoom automático en iOS */
+    /* modales ocupan casi toda la pantalla */
+    .modal{max-width:calc(100vw - 24px)}
+  }
+
+  /* ====== RESPONSIVE: teléfono muy angosto ====== */
+  @media(max-width:380px){
+    .kpi-grid{grid-template-columns:1fr}
+    .tabs button{min-width:100%}
+  }
 </style>
 </head>
 <body>
@@ -310,8 +359,26 @@
   <section id="v-cv" class="card" style="display:none">
     <h2 class="sec">Solicitud de empleo</h2>
     <p class="sub">Completá el formulario oficial de B&amp;C Exportadores. Al enviarlo se genera
-      automáticamente tu solicitud en Word y llega directo a Recursos Humanos. Podés además
-      adjuntar tu CV. Recibís un código de confirmación.</p>
+      automáticamente tu solicitud en Word y llega directo a Recursos Humanos.
+      Recibís un código de confirmación.</p>
+
+    <!-- Puesto de interés -->
+    <h3 class="sec-grupo">🎯 Puesto al que aplicás</h3>
+    <label>Puesto de interés <span class="req">*</span></label>
+    <select id="sPuesto">
+      <option value="">— Seleccioná el área —</option>
+      <option>Producción / Planta</option>
+      <option>Empaque</option>
+      <option>Bodega / Logística</option>
+      <option>Mantenimiento</option>
+      <option>Calidad</option>
+      <option>Administración</option>
+      <option>Finanzas</option>
+      <option>Recursos Humanos</option>
+      <option>Transporte</option>
+      <option>Sistemas / TI</option>
+      <option>Otro / Abierto a oportunidades</option>
+    </select>
 
     <!-- Datos personales -->
     <h3 class="sec-grupo">📋 Datos personales</h3>
@@ -1813,6 +1880,8 @@ function generarWordSolicitud(d){
       children:[ new TextRun({ text:'SOLICITUD DE EMPLEO', bold:true, size:22, color:AZUL2 }) ] }),
     new Paragraph({ alignment:AlignmentType.CENTER, spacing:{ after:160 },
       children:[ new TextRun({ text:`Código: ${d.codigo}  ·  Fecha: ${d.fecha}`, size:18, color:'5A6B7A' }) ] }),
+    new Paragraph({ alignment:AlignmentType.CENTER, spacing:{ after:160 },
+      children:[ new TextRun({ text:`Puesto al que aplica: ${d.puesto||'—'}`, bold:true, size:20, color:AZUL2 }) ] }),
   ];
 
   const tablaDatos = new Table({ width:{ size:100, type:WidthType.PERCENTAGE }, borders:bordes, rows:[
@@ -1897,6 +1966,7 @@ async function enviarCV(){
 
   // Datos
   const d = {
+    puesto:val('sPuesto'),
     nombre:val('sNombre'), ap1:val('sAp1'), ap2:val('sAp2'), cedula:val('sCedula'),
     correo:val('sCorreo'), nacimiento:val('sNacimiento'), telCasa:val('sTelCasa'),
     celular:val('sCelular'), estadoCivil:val('sEstadoCivil'), licencia:val('sLicencia'),
@@ -1907,6 +1977,7 @@ async function enviarCV(){
   };
 
   // Validación mínima
+  if(!d.puesto){ errCV.textContent='Seleccioná el puesto al que aplicás.'; errCV.classList.add('show'); return; }
   if(!d.nombre || !d.ap1){ errCV.textContent='Ingresá al menos nombre y primer apellido.'; errCV.classList.add('show'); return; }
   if(!d.cedula){ errCV.textContent='Ingresá tu número de cédula.'; errCV.classList.add('show'); return; }
   if(!d.correo || !/\S+@\S+\.\S+/.test(d.correo)){ errCV.textContent='Ingresá un correo válido.'; errCV.classList.add('show'); return; }
@@ -1954,6 +2025,7 @@ async function enviarCV(){
       nombre: nombreCompleto,
       nombrePila:d.nombre, apellido1:d.ap1, apellido2:d.ap2||null,
       cedula:d.cedula, correo:d.correo, telefono:d.celular||null, telCasa:d.telCasa||null,
+      puesto:d.puesto||null,
       nacimiento:d.nacimiento||null, estadoCivil:d.estadoCivil||null,
       licencia:d.licencia||null, manipulacion:d.manipulacion||null, hijos:d.hijos||null,
       direccion:d.direccion||null,
@@ -1981,6 +2053,7 @@ async function enviarCV(){
     const cuerpo =
 `SOLICITUD DE EMPLEO — ${codigo}
 Fecha: ${d.fecha}
+Puesto al que aplica: ${d.puesto||'—'}
 
 DATOS PERSONALES
   Nombre completo: ${nombreCompleto}
@@ -2013,7 +2086,7 @@ ${refsTxt}
       await emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, {
         cv_codigo:codigo, cv_nombre:nombreCompleto, cv_correo:d.correo,
         cv_telefono:d.celular||'—', cv_cedula:d.cedula||'—',
-        cv_puesto:d.empleos[0].puesto||'(solicitud general)',
+        cv_puesto:d.puesto||d.empleos[0].puesto||'(solicitud general)',
         cv_mensaje:cuerpo,
         cv_archivo:wordNombre,
         cv_url:'(el postulante descargó el Word; datos completos arriba)',
@@ -2032,7 +2105,7 @@ ${refsTxt}
     ['sNombre','sAp1','sAp2','sCedula','sCorreo','sNacimiento','sTelCasa','sCelular',
      'sHijos','sDireccion','sEmgNombre','sEmgTel','sEmgParentesco','sEscolaridad','sConocimientos']
       .forEach(id=>{ const e=document.getElementById(id); if(e) e.value=''; });
-    ['sEstadoCivil','sLicencia','sManipulacion'].forEach(id=>{ const e=document.getElementById(id); if(e) e.value=''; });
+    ['sPuesto','sEstadoCivil','sLicencia','sManipulacion'].forEach(id=>{ const e=document.getElementById(id); if(e) e.value=''; });
     renderEmpleos(); renderReferencias();
     document.getElementById('cvCodeResult').scrollIntoView({behavior:'smooth'});
 
@@ -2065,7 +2138,7 @@ function pintarCVs(){
   const fe = document.getElementById('cvFEstado').value;
   const fp = document.getElementById('cvFPuesto').value;
   const fb = document.getElementById('cvFBuscar').value.trim().toLowerCase();
-  const puestoDe = cv => (cv.empleos && cv.empleos[0] && cv.empleos[0].puesto) || cv.puesto || '';
+  const puestoDe = cv => cv.puesto || (cv.empleos && cv.empleos[0] && cv.empleos[0].puesto) || '';
   let arr = TODOS_CVS.filter(cv=>{
     if(fe && cv.estado!==fe) return false;
     if(fp && puestoDe(cv)!==fp) return false;
@@ -2106,7 +2179,7 @@ function pintarCVs(){
 function regenerarWordCV(cv){
   if(typeof docx==='undefined'){ alert('No se pudo cargar el generador de Word.'); return; }
   const d = {
-    codigo:cv.codigo,
+    codigo:cv.codigo, puesto:cv.puesto||'',
     fecha: cv.creado && cv.creado.toDate ? cv.creado.toDate().toLocaleDateString('es-CR',{day:'2-digit',month:'long',year:'numeric'}) : '',
     nombre:cv.nombrePila||cv.nombre||'', ap1:cv.apellido1||'', ap2:cv.apellido2||'',
     cedula:cv.cedula||'', correo:cv.correo||'', nacimiento:cv.nacimiento||'',
@@ -2161,7 +2234,7 @@ function rangoTextoCV(r){
   if(r.hasta) return 'hasta '+f(r.hasta);
   return 'Todo el período';
 }
-const puestoDeCV = cv => (cv.empleos && cv.empleos[0] && cv.empleos[0].puesto) || cv.puesto || 'Sin especificar';
+const puestoDeCV = cv => cv.puesto || (cv.empleos && cv.empleos[0] && cv.empleos[0].puesto) || 'Sin especificar';
 
 function calcularMetricasCV(rango){
   rango = rango || {desde:null, hasta:null};
