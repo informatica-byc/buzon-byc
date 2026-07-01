@@ -448,6 +448,7 @@
         <div class="subtabs">
           <button id="stMensajes" class="active" onclick="panelVista('mensajes')">📋 Mensajes</button>
           <button id="stCVs" onclick="panelVista('cvs')">📄 CVs recibidos</button>
+          <button id="stDashCVs" onclick="panelVista('dashcvs')">📊 Dashboard CVs</button>
           <button id="stDashboard" onclick="panelVista('dashboard')">📊 Dashboard</button>
         </div>
       </div>
@@ -528,6 +529,38 @@
           <div class="qmeta" id="cvContador" style="margin:6px 0 0 0"></div>
         </div>
         <div id="listaCVs"></div>
+      </div>
+
+      <!-- VISTA DASHBOARD CVs -->
+      <div id="pv-dashcvs" style="display:none">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+            <div>
+              <h2 class="sec" style="margin:0">Dashboard de solicitudes</h2>
+              <p class="sub" id="dashcvsSub" style="margin:0">Indicadores de las solicitudes de empleo.</p>
+            </div>
+            <button class="btn-admin" id="btnExportarCV" onclick="exportarExcelCV()">⬇️ Exportar a Excel</button>
+          </div>
+          <div class="periodo">
+            <span class="per-lbl">Período:</span>
+            <label>Desde <input type="date" id="cDesde" onchange="renderDashCVs()"></label>
+            <label>Hasta <input type="date" id="cHasta" onchange="renderDashCVs()"></label>
+            <div class="per-quick">
+              <button onclick="rangoRapidoCV('mes')">Este mes</button>
+              <button onclick="rangoRapidoCV('mesAnt')">Mes pasado</button>
+              <button onclick="rangoRapidoCV('anio')">Este año</button>
+              <button onclick="rangoRapidoCV('todo')">Todo</button>
+            </div>
+          </div>
+          <div id="kpisCV" class="kpi-grid"></div>
+        </div>
+        <div class="card">
+          <div class="chart-grid">
+            <div class="chart-box"><div class="chart-t">Por estado</div><canvas id="chCVEstado"></canvas></div>
+            <div class="chart-box"><div class="chart-t">Por puesto de interés</div><canvas id="chCVPuesto"></canvas></div>
+            <div class="chart-box chart-wide"><div class="chart-t">Solicitudes por mes</div><canvas id="chCVMes"></canvas></div>
+          </div>
+        </div>
       </div>
 
       <!-- VISTA DASHBOARD -->
@@ -1150,12 +1183,24 @@ function panelVista(v){
   panelActual=v;
   document.getElementById('pv-mensajes').style.display = v==='mensajes'?'block':'none';
   document.getElementById('pv-cvs').style.display     = v==='cvs'?'block':'none';
+  document.getElementById('pv-dashcvs').style.display = v==='dashcvs'?'block':'none';
   document.getElementById('pv-dashboard').style.display = v==='dashboard'?'block':'none';
   document.getElementById('stMensajes').classList.toggle('active', v==='mensajes');
   document.getElementById('stCVs').classList.toggle('active', v==='cvs');
+  document.getElementById('stDashCVs').classList.toggle('active', v==='dashcvs');
   document.getElementById('stDashboard').classList.toggle('active', v==='dashboard');
   if(v==='dashboard') prepararDashboard();
   if(v==='cvs' && !unsubCVs) escucharCVs();
+  if(v==='dashcvs'){ if(!unsubCVs) escucharCVs(); prepararDashCVs(); }
+}
+
+async function prepararDashCVs(){
+  // si aún no llegaron los CVs, esperar un momento al snapshot
+  if(!TODOS_CVS.length){
+    document.getElementById('kpisCV').innerHTML='<div class="muted" style="grid-column:1/-1">Cargando solicitudes…</div>';
+    await new Promise(r=>setTimeout(r,600));
+  }
+  renderDashCVs();
 }
 
 async function prepararDashboard(){
@@ -2087,6 +2132,182 @@ async function cambiarEstadoCV(codigo, estado){
       actualizadoPor: email
     });
   }catch(e){ alert('No se pudo actualizar: '+e.message); }
+}
+
+/* ===================== DASHBOARD DE SOLICITUDES (CVs) ===================== */
+const CV_ESTADOS_ORD = ['Nuevo','En revisión','Seleccionado','Descartado'];
+
+function leerRangoCV(){
+  const dd=document.getElementById('cDesde'), dh=document.getElementById('cHasta');
+  let desde=null, hasta=null;
+  if(dd && dd.value) desde=new Date(dd.value+'T00:00:00').getTime();
+  if(dh && dh.value) hasta=new Date(dh.value+'T23:59:59').getTime();
+  return {desde, hasta};
+}
+function rangoRapidoCV(tipo){
+  const hoy=new Date(); let desde=null, hasta=null;
+  if(tipo==='mes'){ desde=new Date(hoy.getFullYear(),hoy.getMonth(),1); hasta=new Date(hoy.getFullYear(),hoy.getMonth()+1,0); }
+  else if(tipo==='mesAnt'){ desde=new Date(hoy.getFullYear(),hoy.getMonth()-1,1); hasta=new Date(hoy.getFullYear(),hoy.getMonth(),0); }
+  else if(tipo==='anio'){ desde=new Date(hoy.getFullYear(),0,1); hasta=new Date(hoy.getFullYear(),11,31); }
+  const fmt=d=> d? d.toISOString().slice(0,10):'';
+  document.getElementById('cDesde').value=fmt(desde);
+  document.getElementById('cHasta').value=fmt(hasta);
+  renderDashCVs();
+}
+function rangoTextoCV(r){
+  const f=t=>new Date(t).toLocaleDateString('es-CR',{day:'2-digit',month:'short',year:'numeric'});
+  if(r.desde && r.hasta) return f(r.desde)+' – '+f(r.hasta);
+  if(r.desde) return 'desde '+f(r.desde);
+  if(r.hasta) return 'hasta '+f(r.hasta);
+  return 'Todo el período';
+}
+const puestoDeCV = cv => (cv.empleos && cv.empleos[0] && cv.empleos[0].puesto) || cv.puesto || 'Sin especificar';
+
+function calcularMetricasCV(rango){
+  rango = rango || {desde:null, hasta:null};
+  const enR = cv => {
+    if(!rango.desde && !rango.hasta) return true;
+    const cr=toDate(cv.creado); if(!cr) return true;
+    const t=cr.getTime();
+    if(rango.desde && t<rango.desde) return false;
+    if(rango.hasta && t>rango.hasta) return false;
+    return true;
+  };
+  const arr = TODOS_CVS.filter(enR);
+  const porEstado={}; CV_ESTADOS_ORD.forEach(e=>porEstado[e]=0);
+  const porPuesto={}, porMes={};
+  arr.forEach(cv=>{
+    porEstado[cv.estado]=(porEstado[cv.estado]||0)+1;
+    const p=puestoDeCV(cv); porPuesto[p]=(porPuesto[p]||0)+1;
+    const cr=toDate(cv.creado);
+    if(cr){ const k=cr.getFullYear()+'-'+String(cr.getMonth()+1).padStart(2,'0'); porMes[k]=(porMes[k]||0)+1; }
+  });
+  const total=arr.length;
+  const sel=porEstado['Seleccionado']||0;
+  return { total, porEstado, porPuesto, porMes,
+    tasaSeleccion: total? (sel/total*100):0,
+    pendientes:(porEstado['Nuevo']||0)+(porEstado['En revisión']||0) };
+}
+
+let chartsCV={};
+function destruirChartsCV(){ Object.values(chartsCV).forEach(c=>{try{c.destroy();}catch(_){}}); chartsCV={}; }
+
+function renderDashCVs(){
+  const rango=leerRangoCV();
+  const M=calcularMetricasCV(rango);
+  const sub=document.getElementById('dashcvsSub');
+  if(sub) sub.textContent='Solicitudes de empleo · '+rangoTextoCV(rango);
+
+  document.getElementById('kpisCV').innerHTML=[
+    ['📄', M.total, 'Total de solicitudes',''],
+    ['🆕', M.porEstado['Nuevo']||0, 'Nuevas','sin revisar'],
+    ['🔎', M.porEstado['En revisión']||0, 'En revisión',''],
+    ['✅', M.porEstado['Seleccionado']||0, 'Seleccionadas',''],
+    ['🗂️', M.porEstado['Descartado']||0, 'Descartadas',''],
+    ['⏳', M.pendientes, 'Pendientes','nuevas + en revisión'],
+    ['🎯', M.tasaSeleccion.toFixed(0)+'%', 'Tasa de selección',''],
+  ].map(([ic,val,lbl,s])=>`<div class="kpi">
+      <div class="k-val">${ic} ${val}</div>
+      <div class="k-lbl">${lbl}</div>${s?`<div class="k-sub">${s}</div>`:''}
+    </div>`).join('');
+
+  if(typeof Chart==='undefined') return;
+  destruirChartsCV();
+  const baseOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:11}}}}};
+
+  chartsCV.estado=new Chart(document.getElementById('chCVEstado'),{type:'doughnut',
+    data:{labels:CV_ESTADOS_ORD,datasets:[{data:CV_ESTADOS_ORD.map(e=>M.porEstado[e]||0),
+      backgroundColor:[COL.azul2,COL.ambar,COL.verde,COL.gris]}]},options:baseOpts});
+
+  const puestos=Object.keys(M.porPuesto).sort((a,b)=>M.porPuesto[b]-M.porPuesto[a]);
+  chartsCV.puesto=new Chart(document.getElementById('chCVPuesto'),{type:'bar',
+    data:{labels:puestos,datasets:[{label:'Solicitudes',data:puestos.map(p=>M.porPuesto[p]),
+      backgroundColor:COL.azul}]},options:{...baseOpts,indexAxis:'y',plugins:{legend:{display:false}},
+      scales:{x:{beginAtZero:true,ticks:{precision:0}}}}});
+
+  const meses=Object.keys(M.porMes).sort();
+  chartsCV.mes=new Chart(document.getElementById('chCVMes'),{type:'line',
+    data:{labels:meses,datasets:[{label:'Solicitudes por mes',data:meses.map(k=>M.porMes[k]),
+      borderColor:COL.azul,backgroundColor:'rgba(26,106,168,.15)',fill:true,tension:.3}]},
+    options:{...baseOpts,scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
+}
+
+async function exportarExcelCV(){
+  if(typeof ExcelJS==='undefined'){ alert('La librería de Excel no cargó.'); return; }
+  const btn=document.getElementById('btnExportarCV'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Generando…';
+  try{
+    const rango=leerRangoCV();
+    const M=calcularMetricasCV(rango);
+    const wb=new ExcelJS.Workbook(); wb.creator='Buzón B&C'; wb.created=new Date();
+    const AZUL='FF0B3D66', AZUL2='FF1A6AA8', SOFT='FFE8F1F8', BLANCO='FFFFFFFF';
+    const titulo=(ws,t,col)=>{ ws.mergeCells(1,1,1,col); const c=ws.getCell('A1'); c.value=t;
+      c.font={bold:true,size:15,color:{argb:BLANCO}}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:AZUL}};
+      c.alignment={vertical:'middle',horizontal:'left',indent:1}; ws.getRow(1).height=28; };
+    const head=(row)=>{ row.eachCell(c=>{ c.font={bold:true,color:{argb:BLANCO}};
+      c.fill={type:'pattern',pattern:'solid',fgColor:{argb:AZUL2}}; c.alignment={vertical:'middle',horizontal:'center'};
+      c.border={bottom:{style:'thin',color:{argb:AZUL}}}; }); row.height=20; };
+
+    // Resumen
+    const r=wb.addWorksheet('Resumen',{views:[{showGridLines:false}]});
+    r.columns=[{width:32},{width:16},{width:16},{width:16}];
+    titulo(r,'Solicitudes de empleo · Resumen',4);
+    r.getCell('A2').value='Período'; r.getCell('B2').value=rangoTextoCV(rango);
+    r.getCell('A3').value='Generado'; r.getCell('B3').value=new Date(); r.getCell('B3').numFmt='dd/mm/yyyy hh:mm';
+    r.getCell('A2').font={bold:true}; r.getCell('A3').font={bold:true};
+    let row=5;
+    const kpis=[['Total de solicitudes',M.total],['Nuevas',M.porEstado['Nuevo']||0],
+      ['En revisión',M.porEstado['En revisión']||0],['Seleccionadas',M.porEstado['Seleccionado']||0],
+      ['Descartadas',M.porEstado['Descartado']||0],['Pendientes',M.pendientes],
+      ['Tasa de selección',M.tasaSeleccion.toFixed(1)+'%']];
+    const hk=r.getRow(row); hk.getCell(1).value='Indicador'; hk.getCell(2).value='Valor'; head(hk); row++;
+    kpis.forEach((k,i)=>{ const rr=r.getRow(row); rr.getCell(1).value=k[0]; rr.getCell(2).value=k[1];
+      if(i%2===0) rr.eachCell(c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:SOFT}};});
+      rr.getCell(2).alignment={horizontal:'center'}; row++; });
+
+    // Detalle
+    const d=wb.addWorksheet('Solicitudes',{views:[{showGridLines:false,state:'frozen',ySplit:3}]});
+    d.columns=[{width:16},{width:26},{width:14},{width:24},{width:16},{width:22},{width:13}];
+    titulo(d,'Detalle de solicitudes',7);
+    const hd=d.getRow(3); ['Código','Nombre','Cédula','Correo','Teléfono','Puesto','Estado'].forEach((t,i)=>hd.getCell(i+1).value=t); head(hd);
+    let dr=4;
+    const enR = cv => { if(!rango.desde && !rango.hasta) return true; const cr=toDate(cv.creado); if(!cr) return true;
+      const t=cr.getTime(); if(rango.desde && t<rango.desde) return false; if(rango.hasta && t>rango.hasta) return false; return true; };
+    TODOS_CVS.filter(enR).forEach((cv,i)=>{ const rr=d.getRow(dr);
+      rr.getCell(1).value=cv.codigo; rr.getCell(2).value=cv.nombre; rr.getCell(3).value=cv.cedula||'—';
+      rr.getCell(4).value=cv.correo||'—'; rr.getCell(5).value=cv.telefono||'—';
+      rr.getCell(6).value=puestoDeCV(cv); rr.getCell(7).value=cv.estado;
+      if(i%2===0) rr.eachCell(c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:SOFT}};}); dr++; });
+    d.autoFilter={from:{row:3,column:1},to:{row:3,column:7}};
+
+    // Imágenes de gráficos
+    const imgEstado=await graficoPNG('doughnut',CV_ESTADOS_ORD,CV_ESTADOS_ORD.map(e=>M.porEstado[e]||0),
+      'Por estado',[COL.azul2,COL.ambar,COL.verde,COL.gris]);
+    const puestosK=Object.keys(M.porPuesto).sort((a,b)=>M.porPuesto[b]-M.porPuesto[a]);
+    const imgPuesto=await graficoPNG('bar',puestosK,puestosK.map(p=>M.porPuesto[p]),'Por puesto',COL.azul,true);
+    const mesesK=Object.keys(M.porMes).sort();
+    const imgMes=await graficoPNG('line',mesesK,mesesK.map(k=>M.porMes[k]),'Por mes',COL.azul);
+
+    const hojaGraf=(nombre,etiqueta,pares,img)=>{ const ws=wb.addWorksheet(nombre,{views:[{showGridLines:false}]});
+      ws.columns=[{width:26},{width:14}]; titulo(ws,etiqueta,2);
+      const h=ws.getRow(3); h.getCell(1).value='Categoría'; h.getCell(2).value='Cantidad'; head(h);
+      let rr=4; pares.forEach((p,i)=>{ const row=ws.getRow(rr); row.getCell(1).value=p[0]; row.getCell(2).value=p[1];
+        if(i%2===0) row.eachCell(c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:SOFT}};}); rr++; });
+      if(img){ const id=wb.addImage({base64:img.split(',')[1],extension:'png'}); ws.addImage(id,{tl:{col:3,row:2},ext:{width:440,height:280}}); } };
+    hojaGraf('PorEstado','Solicitudes por estado',CV_ESTADOS_ORD.map(e=>[e,M.porEstado[e]||0]),imgEstado);
+    hojaGraf('PorPuesto','Solicitudes por puesto',puestosK.map(p=>[p,M.porPuesto[p]]),imgPuesto);
+    hojaGraf('PorMes','Solicitudes por mes',mesesK.map(k=>[k,M.porMes[k]]),imgMes);
+
+    const pegar=(img,col,rowA)=>{ if(!img) return; const id=wb.addImage({base64:img.split(',')[1],extension:'png'});
+      r.addImage(id,{tl:{col,row:rowA},ext:{width:380,height:240}}); };
+    pegar(imgEstado,4,5); pegar(imgPuesto,4,18); pegar(imgMes,10,5);
+
+    const buf=await wb.xlsx.writeBuffer();
+    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url=URL.createObjectURL(blob); const a=document.createElement('a');
+    a.href=url; a.download='Solicitudes-ByC-'+new Date().toISOString().slice(0,10)+'.xlsx'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+  }catch(e){ console.error(e); alert('No se pudo exportar: '+e.message); }
+  finally{ btn.disabled=false; btn.textContent='⬇️ Exportar a Excel'; }
 }
 
 /* ============================================================
