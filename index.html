@@ -1680,10 +1680,13 @@ async function listarUsuarios(){
       const em=escHtml(u.email).replace(/'/g,"&#39;");
       return `<div class="user-row">
         <div style="flex:1;min-width:0">
-          <div>${escHtml(u.email)}${esYo?' <span class="qmeta" style="margin:0">(vos)</span>':''}</div>
+          <div id="emailView_${d.id}">${escHtml(u.email)}${esYo?' <span class="qmeta" style="margin:0">(vos)</span>':''}</div>
+          <div id="emailEdit_${d.id}" style="display:none;gap:6px;align-items:center;margin:2px 0">
+            <input id="emailInput_${d.id}" type="email" value="${em}" style="padding:5px 8px;font-size:.85rem;flex:1;min-width:0">
+          </div>
           <span class="qmeta" style="margin:0">${ROL_TXT[rol]||rol} · ${fechaTxt(u.creado)}</span>
         </div>
-        <div style="display:flex;gap:6px;align-items:center">
+        <div id="acciones_${d.id}" style="display:flex;gap:6px;align-items:center">
           <select id="rol_${d.id}" onchange="marcarRolCambiado('${d.id}','${rol}')"
             ${esYo?'disabled title="No podés cambiar tu propio rol"':''}
             style="width:auto;padding:5px 8px;font-size:.8rem">
@@ -1692,7 +1695,13 @@ async function listarUsuarios(){
           </select>
           ${esYo?'':`<button class="ic-btn" id="save_${d.id}" title="Guardar rol" onclick="guardarRol('${d.id}')"
             style="display:none;background:var(--ok);color:#fff;border-color:var(--ok)">✓</button>`}
+          <button class="ic-btn" title="Editar correo" onclick="activarEdicionEmail('${d.id}')">✏️</button>
           ${esYo?'':`<button class="ic-btn" title="Quitar acceso" onclick="eliminarUsuario('${d.id}','${em}')">🗑️</button>`}
+        </div>
+        <div id="accionesEmail_${d.id}" style="display:none;gap:6px;align-items:center">
+          <button class="ic-btn" id="saveEmail_${d.id}" title="Guardar correo" onclick="guardarEmail('${d.id}')"
+            style="background:var(--ok);color:#fff;border-color:var(--ok)">✓</button>
+          <button class="ic-btn" title="Cancelar" onclick="cancelarEdicionEmail('${d.id}','${em}')">✕</button>
         </div>
       </div>`;}).join('');
   }catch(e){ cont.innerHTML='<div class="muted" style="padding:8px">No se pudo cargar la lista.</div>'; }
@@ -1721,6 +1730,41 @@ async function guardarRol(uid){
   }catch(e){
     if(btn){ btn.disabled=false; btn.innerHTML='✓'; }
     alert('No se pudo cambiar el rol: '+e.message);
+  }
+}
+
+function activarEdicionEmail(uid){
+  document.getElementById('emailView_'+uid).style.display='none';
+  document.getElementById('emailEdit_'+uid).style.display='flex';
+  document.getElementById('acciones_'+uid).style.display='none';
+  document.getElementById('accionesEmail_'+uid).style.display='flex';
+  const inp=document.getElementById('emailInput_'+uid); inp.focus(); inp.select();
+}
+function cancelarEdicionEmail(uid, emailOriginal){
+  document.getElementById('emailInput_'+uid).value=emailOriginal;
+  document.getElementById('emailView_'+uid).style.display='';
+  document.getElementById('emailEdit_'+uid).style.display='none';
+  document.getElementById('acciones_'+uid).style.display='flex';
+  document.getElementById('accionesEmail_'+uid).style.display='none';
+}
+async function guardarEmail(uid){
+  const input=document.getElementById('emailInput_'+uid);
+  const nuevo=input.value.trim();
+  if(!nuevo || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nuevo)){
+    alert('Ingresá un correo válido.'); return;
+  }
+  const btn=document.getElementById('saveEmail_'+uid);
+  btn.disabled=true; btn.innerHTML='…';
+  try{
+    await db.collection('adminUsers').doc(uid).set({email:nuevo},{merge:true});
+    const msg=document.getElementById('nuMsg');
+    msg.className='alert ok show';
+    msg.textContent='✅ Correo actualizado en el panel. Nota: esto solo cambia el correo que se muestra aquí; el correo de inicio de sesión en Firebase Authentication no cambia (para eso el usuario debe cambiarlo desde su propia cuenta).';
+    setTimeout(()=>msg.classList.remove('show'), 6000);
+    listarUsuarios();
+  }catch(e){
+    btn.disabled=false; btn.innerHTML='✓';
+    alert('No se pudo actualizar el correo: '+e.message);
   }
 }
 
