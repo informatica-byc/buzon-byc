@@ -703,7 +703,7 @@
 </div>
 
 <!-- MODAL CONFIRMAR ELIMINAR -->
-<div class="modal-bg" id="modalDel">
+<div class="modal-bg" id="modalDel" style="z-index:300">
   <div class="modal" style="max-width:400px">
     <div class="modal-head" style="background:var(--err)">Eliminar usuario</div>
     <div class="modal-body">
@@ -1677,26 +1677,51 @@ async function listarUsuarios(){
     if(snap.empty){ cont.innerHTML='<div class="muted" style="padding:8px">Aún no hay usuarios registrados aquí.</div>'; return; }
     const yo=auth.currentUser?auth.currentUser.uid:null;
     cont.innerHTML=snap.docs.map(d=>{const u=d.data(); const rol=u.rol||'rrhh'; const esYo=d.id===yo;
+      const em=escHtml(u.email).replace(/'/g,"&#39;");
       return `<div class="user-row">
         <div style="flex:1;min-width:0">
           <div>${escHtml(u.email)}${esYo?' <span class="qmeta" style="margin:0">(vos)</span>':''}</div>
           <span class="qmeta" style="margin:0">${ROL_TXT[rol]||rol} · ${fechaTxt(u.creado)}</span>
         </div>
         <div style="display:flex;gap:6px;align-items:center">
-          <select onchange="cambiarRol('${d.id}', this.value)" ${esYo?'disabled title="No podés cambiar tu propio rol"':''}
+          <select id="rol_${d.id}" onchange="marcarRolCambiado('${d.id}','${rol}')"
+            ${esYo?'disabled title="No podés cambiar tu propio rol"':''}
             style="width:auto;padding:5px 8px;font-size:.8rem">
             <option value="rrhh" ${rol==='rrhh'?'selected':''}>RRHH</option>
             <option value="admin" ${rol==='admin'?'selected':''}>Admin</option>
           </select>
-          ${esYo?'':`<button class="ic-btn" title="Quitar acceso" onclick="eliminarUsuario('${d.id}','${escHtml(u.email).replace(/'/g,"&#39;")}')">🗑️</button>`}
+          ${esYo?'':`<button class="ic-btn" id="save_${d.id}" title="Guardar rol" onclick="guardarRol('${d.id}')"
+            style="display:none;background:var(--ok);color:#fff;border-color:var(--ok)">✓</button>`}
+          ${esYo?'':`<button class="ic-btn" title="Quitar acceso" onclick="eliminarUsuario('${d.id}','${em}')">🗑️</button>`}
         </div>
       </div>`;}).join('');
   }catch(e){ cont.innerHTML='<div class="muted" style="padding:8px">No se pudo cargar la lista.</div>'; }
 }
 
-async function cambiarRol(uid, rol){
-  try{ await db.collection('adminUsers').doc(uid).set({rol},{merge:true}); listarUsuarios(); }
-  catch(e){ alert('No se pudo cambiar el rol: '+e.message); }
+// Muestra el botón ✓ solo cuando el rol seleccionado difiere del actual
+function marcarRolCambiado(uid, rolActual){
+  const sel=document.getElementById('rol_'+uid);
+  const btn=document.getElementById('save_'+uid);
+  if(!sel||!btn) return;
+  btn.style.display = (sel.value!==rolActual) ? 'inline-flex' : 'none';
+}
+
+async function guardarRol(uid){
+  const sel=document.getElementById('rol_'+uid);
+  const btn=document.getElementById('save_'+uid);
+  if(!sel) return;
+  const rol=sel.value;
+  if(btn){ btn.disabled=true; btn.innerHTML='…'; }
+  try{
+    await db.collection('adminUsers').doc(uid).set({rol},{merge:true});
+    const msg=document.getElementById('nuMsg');
+    msg.className='alert ok show'; msg.textContent='✅ Rol actualizado.';
+    setTimeout(()=>msg.classList.remove('show'), 2500);
+    listarUsuarios();
+  }catch(e){
+    if(btn){ btn.disabled=false; btn.innerHTML='✓'; }
+    alert('No se pudo cambiar el rol: '+e.message);
+  }
 }
 
 let DEL_UID=null, DEL_EMAIL=null;
