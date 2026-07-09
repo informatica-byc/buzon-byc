@@ -262,6 +262,46 @@
     .kpi-grid{grid-template-columns:1fr}
     .tabs button{min-width:100%}
   }
+  /* ====== QR: pantalla ====== */
+  .qr-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:10px}
+  .qr-box{border:1px solid var(--linea);border-radius:14px;padding:20px;text-align:center}
+  .qr-box-cv{border:2px solid var(--ok);background:var(--okbg)}
+  .qr-box-title{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+  .print-only{display:none}          /* oculto en pantalla, visible al imprimir */
+  @media(max-width:560px){ .qr-grid{grid-template-columns:1fr} }
+
+  /* ====== IMPRESIÓN: solo los QR, hoja limpia ====== */
+  @media print{
+    /* fondo blanco puro */
+    html, body{ background:#fff !important; }
+    /* ocultar TODO por defecto */
+    body * { visibility:hidden !important; }
+    /* mostrar solo el área de QR y su contenido */
+    #qrPrintArea, #qrPrintArea * { visibility:visible !important; }
+    /* posicionar el área de QR ocupando la hoja */
+    #qrPrintArea{ position:absolute; left:0; top:0; width:100%; padding:0 10mm; box-sizing:border-box; }
+    /* elementos que no deben salir en la impresión */
+    .no-print{ display:none !important; }
+    /* mostrar los elementos exclusivos de impresión */
+    .print-only{ display:block !important; visibility:visible !important; }
+    /* encabezado impreso */
+    .print-header{ text-align:center; margin-bottom:14px; padding-bottom:12px; border-bottom:2px solid var(--azul); }
+    .print-title{ font-size:20pt; font-weight:800; color:var(--azul); }
+    .print-sub{ font-size:11pt; color:#5a6b7a; margin-top:2px; }
+    /* cajas de QR más grandes y nítidas en papel */
+    .qr-grid{ gap:14mm; margin-top:8mm; }
+    .qr-box{ border:1.5pt solid #ccd6e0 !important; background:#fff !important; padding:8mm; break-inside:avoid; }
+    .qr-box-cv{ border:2pt solid var(--ok) !important; }
+    .qr-box-title{ font-size:12pt; }
+    #qrcode img, #qrcodeCV img, #qrcode canvas, #qrcodeCV canvas{ width:52mm !important; height:52mm !important; }
+    .qr-url{ font-size:9pt !important; word-break:break-all; }
+    .qr-instr{ font-size:9pt; color:#444; margin-top:8px; line-height:1.35; }
+    .print-foot{ text-align:center; font-size:8pt; color:#8a96a3; margin-top:12mm; }
+    /* evitar encabezados/pies del navegador y márgenes grandes */
+    @page{ margin:12mm; }
+    /* asegurar colores en impresión */
+    *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+  }
 </style>
 </head>
 <body>
@@ -468,31 +508,43 @@
 
   <!-- QR -->
   <section id="v-qr" class="card" style="display:none">
-    <h2 class="sec">Códigos QR para colaboradores</h2>
-    <p class="sub">Imprimí estos códigos y pegálos en la pizarra informativa o en las áreas.
+    <h2 class="sec no-print">Códigos QR para colaboradores</h2>
+    <p class="sub no-print">Imprimí estos códigos y pegálos en la pizarra informativa o en las áreas.
       Cualquier colaborador los escanea con su celular y llega directo al formulario correspondiente.</p>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:10px">
-      <!-- QR Quejas y Sugerencias -->
-      <div style="border:1px solid var(--linea);border-radius:14px;padding:20px;text-align:center">
-        <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--azul);margin-bottom:10px">📝 Quejas y Sugerencias</div>
-        <div class="qr-area" style="padding:0">
-          <div id="qrcode" style="display:inline-block;padding:12px;background:#fff;border:1px solid var(--linea);border-radius:12px"></div>
-          <div class="qr-url" id="qrUrl" style="font-size:.72rem;margin-top:8px"></div>
+    <div id="qrPrintArea">
+      <!-- Encabezado que solo se ve al IMPRIMIR -->
+      <div class="print-only print-header">
+        <div class="print-title">Centro de Atención RRHH</div>
+        <div class="print-sub">B&amp;C Exportadores del Valle de Ujarrás</div>
+      </div>
+
+      <div class="qr-grid">
+        <!-- QR Quejas y Sugerencias -->
+        <div class="qr-box qr-box-qs">
+          <div class="qr-box-title" style="color:var(--azul)">📝 Quejas y Sugerencias</div>
+          <div class="qr-area" style="padding:0">
+            <div id="qrcode" style="display:inline-block;padding:12px;background:#fff;border:1px solid var(--linea);border-radius:12px"></div>
+            <div class="qr-url" id="qrUrl" style="font-size:.72rem;margin-top:8px"></div>
+          </div>
+          <div class="print-only qr-instr">Escaneá con la cámara de tu celular para enviar una queja, sugerencia, felicitación o consulta. Es anónimo y recibís un código de seguimiento.</div>
+        </div>
+        <!-- QR CV -->
+        <div class="qr-box qr-box-cv">
+          <div class="qr-box-title" style="color:var(--ok)">📄 Enviar CV</div>
+          <div class="qr-area" style="padding:0">
+            <div id="qrcodeCV" style="display:inline-block;padding:12px;background:#fff;border:1px solid #bfe6d4;border-radius:12px"></div>
+            <div class="qr-url" id="qrUrlCV" style="font-size:.72rem;margin-top:8px"></div>
+          </div>
+          <div class="print-only qr-instr">Escaneá para enviar tu solicitud de empleo. Completás el formulario y llega directo a Recursos Humanos.</div>
         </div>
       </div>
-      <!-- QR CV -->
-      <div style="border:2px solid var(--ok);border-radius:14px;padding:20px;text-align:center;background:var(--okbg)">
-        <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ok);margin-bottom:10px">📄 Enviar CV</div>
-        <div class="qr-area" style="padding:0">
-          <div id="qrcodeCV" style="display:inline-block;padding:12px;background:#fff;border:1px solid #bfe6d4;border-radius:12px"></div>
-          <div class="qr-url" id="qrUrlCV" style="font-size:.72rem;margin-top:8px"></div>
-        </div>
-      </div>
+
+      <div class="print-only print-foot">Departamento de Sistemas · B&amp;C Exportadores del Valle de Ujarrás</div>
     </div>
 
-    <button class="btn ghost" style="max-width:240px;margin:18px auto 0;display:block" onclick="window.print()">🖨️ Imprimir QRs</button>
-    <p style="font-size:.75rem;color:var(--gris);text-align:center;margin-top:8px">Al imprimir, ambos códigos aparecen en la misma hoja.</p>
+    <button class="btn ghost no-print" style="max-width:240px;margin:18px auto 0;display:block" onclick="window.print()">🖨️ Imprimir QRs</button>
+    <p class="no-print" style="font-size:.75rem;color:var(--gris);text-align:center;margin-top:8px">Al imprimir sale una hoja limpia solo con los códigos.</p>
   </section>
 
   <!-- ADMIN -->
