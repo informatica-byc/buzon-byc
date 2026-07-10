@@ -142,13 +142,6 @@
   .bloque{border:1px solid var(--linea);border-radius:12px;padding:14px;margin-bottom:12px;background:#fbfdff}
   .bloque-tit{font-size:.8rem;font-weight:700;color:var(--azul2);margin-bottom:8px}
   /* ---- CV ---- */
-  .file-drop{border:2px dashed var(--linea);border-radius:12px;padding:28px;text-align:center;
-    cursor:pointer;transition:.18s;background:#fff}
-  .file-drop:hover,.file-drop.over{border-color:var(--azul2);background:var(--azul-soft)}
-  .file-drop .fd-ic{font-size:2rem;display:block;margin-bottom:6px}
-  .file-drop .fd-lbl{font-size:.88rem;color:var(--gris)}
-  .file-drop .fd-file{font-size:.84rem;color:var(--azul);font-weight:700;margin-top:8px;display:none}
-  .file-drop input[type=file]{display:none}
   .cv-progress{height:8px;border-radius:8px;background:var(--linea);margin-top:10px;overflow:hidden;display:none}
   .cv-progress-bar{height:100%;width:0;background:var(--azul2);transition:width .3s}
   .cv-card{border:1px solid var(--linea);border-radius:12px;padding:14px;margin-bottom:10px;background:#fff}
@@ -270,36 +263,43 @@
   .print-only{display:none}          /* oculto en pantalla, visible al imprimir */
   @media(max-width:560px){ .qr-grid{grid-template-columns:1fr} }
 
-  /* ====== IMPRESIÓN: solo los QR, hoja limpia ====== */
+  /* ====== IMPRESIÓN estilo pizarra: hoja limpia y presentable ====== */
   @media print{
-    /* fondo blanco puro */
     html, body{ background:#fff !important; }
-    /* ocultar TODO por defecto */
     body * { visibility:hidden !important; }
-    /* mostrar solo el área de QR y su contenido */
     #qrPrintArea, #qrPrintArea * { visibility:visible !important; }
-    /* posicionar el área de QR ocupando la hoja */
-    #qrPrintArea{ position:absolute; left:0; top:0; width:100%; padding:0 10mm; box-sizing:border-box; }
-    /* elementos que no deben salir en la impresión */
+    #qrPrintArea{ position:absolute; left:0; top:0; width:100%; box-sizing:border-box; }
     .no-print{ display:none !important; }
-    /* mostrar los elementos exclusivos de impresión */
     .print-only{ display:block !important; visibility:visible !important; }
-    /* encabezado impreso */
-    .print-header{ text-align:center; margin-bottom:14px; padding-bottom:12px; border-bottom:2px solid var(--azul); }
-    .print-title{ font-size:20pt; font-weight:800; color:var(--azul); }
-    .print-sub{ font-size:11pt; color:#5a6b7a; margin-top:2px; }
-    /* cajas de QR más grandes y nítidas en papel */
-    .qr-grid{ gap:14mm; margin-top:8mm; }
-    .qr-box{ border:1.5pt solid #ccd6e0 !important; background:#fff !important; padding:8mm; break-inside:avoid; }
+
+    /* Banda azul superior con logo */
+    .print-band{ background:var(--azul) !important; text-align:center; padding:8mm 6mm 5mm; }
+    .print-band-logo{ display:inline-block; background:#fff; border-radius:10px; padding:5px 8px; }
+    .print-band-logo img{ height:22mm; display:block; }
+    .print-band-name{ color:#fff !important; font-size:11pt; font-weight:700; letter-spacing:1px; margin-top:6px; }
+
+    /* Título principal */
+    .print-maintitle{ text-align:center; font-size:26pt; font-weight:800; color:var(--azul); margin:7mm 6mm 2mm; line-height:1.1; }
+    .print-subtitle{ text-align:center; font-size:11pt; color:#5a6b7a; margin:0 6mm 4mm; }
+
+    /* Tarjetas de QR lado a lado */
+    .qr-grid{ display:grid !important; grid-template-columns:1fr 1fr; gap:8mm; margin:4mm 10mm 0; }
+    .qr-box{ border:1.5pt solid #ccd6e0 !important; border-radius:14px; background:#fff !important; padding:6mm 5mm; text-align:center; break-inside:avoid; }
     .qr-box-cv{ border:2pt solid var(--ok) !important; }
-    .qr-box-title{ font-size:12pt; }
-    #qrcode img, #qrcodeCV img, #qrcode canvas, #qrcodeCV canvas{ width:52mm !important; height:52mm !important; }
-    .qr-url{ font-size:9pt !important; word-break:break-all; }
-    .qr-instr{ font-size:9pt; color:#444; margin-top:8px; line-height:1.35; }
-    .print-foot{ text-align:center; font-size:8pt; color:#8a96a3; margin-top:12mm; }
-    /* evitar encabezados/pies del navegador y márgenes grandes */
-    @page{ margin:12mm; }
-    /* asegurar colores en impresión */
+    .qr-box-title{ font-size:12pt; font-weight:700; margin-bottom:5mm; }
+    #qrcode img, #qrcodeCV img, #qrcode canvas, #qrcodeCV canvas{ width:46mm !important; height:46mm !important; }
+    .qr-url{ font-size:8.5pt !important; word-break:break-all; margin-top:4mm; color:#33475b; }
+    .qr-instr{ font-size:8.5pt; color:#444; margin-top:4mm; line-height:1.35; }
+
+    /* Cómo funciona */
+    .print-como{ margin:8mm 12mm 0; }
+    .print-como-title{ text-align:center; font-size:13pt; font-weight:700; color:var(--azul); margin-bottom:4mm; }
+    .print-paso{ display:flex; align-items:flex-start; gap:8px; margin-bottom:3mm; font-size:9.5pt; color:#243240; line-height:1.35; }
+    .print-num{ flex:none; width:16px; height:16px; border-radius:50%; background:var(--azul) !important; color:#fff !important; font-size:8pt; font-weight:700; display:flex; align-items:center; justify-content:center; margin-top:1px; }
+
+    .print-foot{ text-align:center; font-size:8pt; color:#8a96a3; margin-top:8mm; padding-top:4mm; border-top:1px solid #e3e9f0; }
+
+    @page{ margin:0; size:A4; }
     *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
   }
 </style>
@@ -513,11 +513,13 @@
       Cualquier colaborador los escanea con su celular y llega directo al formulario correspondiente.</p>
 
     <div id="qrPrintArea">
-      <!-- Encabezado que solo se ve al IMPRIMIR -->
-      <div class="print-only print-header">
-        <div class="print-title">Centro de Atención RRHH</div>
-        <div class="print-sub">B&amp;C Exportadores del Valle de Ujarrás</div>
+      <!-- Banda superior azul con logo (estilo pizarra), solo al imprimir -->
+      <div class="print-only print-band">
+        <div class="print-band-logo"><img src="data:image/png;base64,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8g9XrfrshBNOcBxn8uTJDz/8cJ8+fZrrQKGfVdGxJ2vXruUcL7lkJJHyfa+6uuquu+7617/+RUQvvvgCAJx//i90/bFjx86bN0/fdc89dwHA7NkziWjv3uJWrXJHjryAiJ5++qmsrIz169fqW9auXZ2dnfnSSy/q3caDB5+WkRnetWsnES1YMA8ApkyZvHPnzrvuustxnHg81rFj+5NOOoFIxWKx3//+99u3b9fPefjhBwHg1lsn6udozalfv745OZl79xYT0f79+88666yxY8e6rktEM2e+k54enjt3jr69rKykQ4d2999/n/7z6qvHA8DHH39IRBs3rg8Greuv/w0ReZ47aNDAnJyckpISIkomky+++MLUqc+Wl5cWFp5YUVGub1+yZMkf//jHVPDON5afJSxKSkpatWo5ceJN+svVq1fHYrEvvvhC9/7NN9+EiO+889bHHy/XWHFdVymaOvU5yzI++eRf+q7TTx9SUJC/bdvn2dmZ11xzta7m+x4RXXjh+e3atamoqCCiceMu79y5g87RWVtbm5OTdfnll5eUlOqMR77v9elzyhlnDNXxNfX19Xv37iWihoaGpUuXXHjhBV26dKytrU0h4+KLRx5/fIFt27r+kiWLAeAf//iH53ndu3cZPPg0/Y6O4xDRrbf+LhAwN2xYT0T33XdfRmba9u1bdeNPOqln796n6N64YtzY447robFVWrqvrKykrKz01VenpaWFp017Wb8FEW3cuMG27Wb288/yjHWlFCJUVFRu2bJlzpw5L7zwQiAQ6NKli1bi7rvv/j59+txww43l5eUDBgzwPI8xhgg62q2urq6hoWHGjHc2bNhwxx13bNnyeU1NtHv3/AMaRmO6u7KyslWrVmnN1HU927Y/+uij++67Nz09/de//nWbNq2DwWCjTS+lVhWVUpFIpF27dkS0Y8eO7t3zr7rqqqKi4k8//XI7kFKkA/+1dty+ffusrIylS5esX7+uuLg4Pz8/dRwJEbVr1y6ZdJcuXaY1Kt/zE3Zi8+aN9957T11d3S23/O6A6qps2167du3KlSsfeuihsrKyvLzWJ554UiQSue5X1w0bdvp11/1y2rSXe/TooQ8taJYL7GdthRNRLBbT6bx0UlwpZW5ui9GjR0Wj0blz52kVvYmXnO3du3fr1q22nXzvvYXXXvursrIyRLQss2nmCcMwlIK6ujo9kIZhzp8//6KLLty69fNPPvn0jDPOOPQsoNRYaohs3rzZcZy8vLxwOKi3hByq7iGiaZqWZcZiscrK/UqRaZqa1kldRUTdDAAwDGP1Z6svueSSWbNmLly4WEfpNe0KKf2qqmrDsJRSJ51UOH36W5decmksFnvllVeuve6Xl156aUNDQzNZH/EzBYSUKicnp2fPnj179szIyPB9TwjD87xAILBgwYLhw8+pqal69NEnhg07c/z48clkMhVKefzxx/ft27dv3766gzp37gJAiURCH9anJ3EiYQvB9LxHRKXk6NFjlixZvGzZBw0Nsdxc1dTI1J2cMmcQsaqqyrbt2traQCDYr1//RYsW1dbWHsik9uW2JaVUIpFoaIjl5eUVFBQYhpFI2PrAmkaPo50goo4dOxywR9xzzjmnuLj4qaf+XF5e1r1741F1endCYWFhIBDIzMzQ8SElJSWDBg0aNGhQcXHx0qWLn3vuuSVLlqxZs2bo0KHN0Tp/ltLCNE3GGOdMG2bnnXceY3zatGmBQGDjxo379u0rLCy84447+/Xrc//99+3btycQCCCiYYgUv6APMQSAQYNO696922efrdL0gWYRVq1a2a9fv/79++u7FMlQKPjggw/V1dXfc89dTSNfhBCMYcpg1uO0fv36IUOG9O7du3fv3uPGjd+zZ++nn36KjdlmuRBC501jjK1cuSKRsC+77LLOnTsPHDhw9erPUm1gjK1YsapDhw7nnjtCNwOAeZ535513ZWdn33777b7v6nhjzjjnjYHHxx3Xs6DguPnz57/55psrVqwAgI4dO15zzbV///vLlmXp80qaZab+7FRO27bfeOMNABg48NS9e/dWV1evXbvm8svHTpv28sKF77VunTdjxkzXdePx+MSJNwPAkCGDtmzZUllZOW7c5QDwhz/cW1tb63meJhKIaOnSxV26dJo9e6ZSynXdKVOeOfHEnps2bVRK7dy5o+cJx3EBb731f57n3nvv3QDw8MMPV1dXe56XTCaXLFmckZHepk3rVatW6ExcGzZs6N+//6effiqljMfj06ZNA4AhQ4bs3bt3+/bt3bt3C4eDy5Yti0ajH3/88WmnDZg69Vn9Xp9/vuX44wsmT/6r53lSytmzZ+fn5y9atIiIysrKhg8/CwCeeupJ27ZfeOF5ALj++t+Ul5dv377tuIIe4XB46dKldXV1RUVFkyZNuvXWW2Ox2PDhw99+++1oNBqNRl988cWJEyfqKPzm9PPPjLdAxOLi4mXLlul9wO3bdwiFQu+889bGjRufeWbyxx8vl5Jatmw1bNiw0tLSNWtWS+nbdrJVq7z09PTi4mKtGJ588smpTXn6mUVFRQsWLGjbtq1SqqamZuTIi3JysuPx+JIlS8rLyzhjwjCHDBmSk5Mzffp0x3H69OnTt2/fkpKSDz74IJlMElFaWtqZZ56Znp4+b968ffv2de3adcSIEbt37165cmUikfA8r127dr7vV1ZWIEJWVk7r1q2rqqoKCgr0saWIgMj2798/c+bMFi1a6G0pw4cP79ixo+u6y5cv37XrC84ZIu/fv39+fv706dNra2vz83vYdqKiogIR09PT27Vrt2XLlieffHLatGn9+vWbPHnyzp07zznnHCllIBA488wzm8+C43+G26miorxVq7zv5ndI0YtN43i/kTk+wll2R6hwWKsqla419SF1lOF3CC2ura2NRCJHOIL7P43lTHW3UqpJCFpjUJvuTT0Yqf49QM6zA47bL6827bXDjsRXhOqBu7Tyr4N+D7TkS0skFZrbFF5Nzz3URyU2RuE1eWzTV0s1o+mLpA4+0ldTyflSakDqmQe5UVJC8dudRPGfIS1+5POu/+O7Ao/FLhwr/2l01rFyDBbHyjFYHCvHYHGs/NTK/wN2BeWejlrJngAAAABJRU5ErkJggg==" alt="B&amp;C"></div>
+        <div class="print-band-name">B&amp;C EXPORTADORES DEL VALLE DE UJARRÁS</div>
       </div>
+      <div class="print-only print-maintitle">Buzón de Atención al Colaborador</div>
+      <div class="print-only print-subtitle">Tu voz cuenta. Tu mensaje llega directo a Recursos Humanos.</div>
 
       <div class="qr-grid">
         <!-- QR Quejas y Sugerencias -->
@@ -527,17 +529,26 @@
             <div id="qrcode" style="display:inline-block;padding:12px;background:#fff;border:1px solid var(--linea);border-radius:12px"></div>
             <div class="qr-url" id="qrUrl" style="font-size:.72rem;margin-top:8px"></div>
           </div>
-          <div class="print-only qr-instr">Escaneá con la cámara de tu celular para enviar una queja, sugerencia, felicitación o consulta. Es anónimo y recibís un código de seguimiento.</div>
+          <div class="print-only qr-instr">Escaneá para enviar una queja, sugerencia, felicitación o consulta. Podés hacerlo de forma anónima y recibís un código de seguimiento.</div>
         </div>
         <!-- QR CV -->
         <div class="qr-box qr-box-cv">
-          <div class="qr-box-title" style="color:var(--ok)">📄 Enviar CV</div>
+          <div class="qr-box-title" style="color:var(--ok)">📄 Enviar tu solicitud de empleo</div>
           <div class="qr-area" style="padding:0">
             <div id="qrcodeCV" style="display:inline-block;padding:12px;background:#fff;border:1px solid #bfe6d4;border-radius:12px"></div>
             <div class="qr-url" id="qrUrlCV" style="font-size:.72rem;margin-top:8px"></div>
           </div>
-          <div class="print-only qr-instr">Escaneá para enviar tu solicitud de empleo. Completás el formulario y llega directo a Recursos Humanos.</div>
+          <div class="print-only qr-instr">Escaneá para completar tu solicitud de empleo. El formulario llega directo a Recursos Humanos.</div>
         </div>
+      </div>
+
+      <!-- Cómo funciona (solo al imprimir) -->
+      <div class="print-only print-como">
+        <div class="print-como-title">Cómo funciona</div>
+        <div class="print-paso"><span class="print-num">1</span><span>Escaneá el código con la cámara de tu celular (con tus datos, sin necesidad de la red de la empresa).</span></div>
+        <div class="print-paso"><span class="print-num">2</span><span>Elegí el tipo de mensaje y la sede, y escribí lo que querés comunicar. Podés hacerlo de forma anónima.</span></div>
+        <div class="print-paso"><span class="print-num">3</span><span>Al enviar recibís un CÓDIGO de seguimiento. Anotalo bien (ejemplo: QJ-2026-0001).</span></div>
+        <div class="print-paso"><span class="print-num">4</span><span>Con ese código podés consultar el estado y la respuesta, en línea o aquí en la pizarra informativa.</span></div>
       </div>
 
       <div class="print-only print-foot">Departamento de Sistemas · B&amp;C Exportadores del Valle de Ujarrás</div>
